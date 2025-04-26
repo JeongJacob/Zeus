@@ -6,6 +6,12 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds],
 });
 
+console.log("DISCORD_TOKEN:", process.env.TOKEN); // 혹은 process.env.TOKEN
+client
+    .login(process.env.TOKEN)
+    .then(() => console.log("Logged in!"))
+    .catch((err) => console.error("Login failed: ", err));
+
 // 명령어 파일들
 const getPuuidCommand = require("./commands/puuid");
 const handleMatchCommand = require("./commands/match");
@@ -83,9 +89,3 @@ client.login(process.env.TOKEN).catch((err) => {
     console.error("❌ 봇 로그인 실패:", err);
     process.exit(1); // 로그인 실패 시 프로세스 종료
 });
-
-console.log("DISCORD_TOKEN:", process.env.TOKEN); // 혹은 process.env.TOKEN
-client
-    .login(process.env.TOKEN)
-    .then(() => console.log("Logged in!"))
-    .catch((err) => console.error("Login failed: ", err));
