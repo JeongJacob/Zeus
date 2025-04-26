@@ -83,3 +83,9 @@ client.login(process.env.TOKEN).catch((err) => {
     console.error("❌ 봇 로그인 실패:", err);
     process.exit(1); // 로그인 실패 시 프로세스 종료
 });
+
+console.log("DISCORD_TOKEN:", process.env.TOKEN); // 혹은 process.env.TOKEN
+client
+    .login(process.env.TOKEN)
+    .then(() => console.log("Logged in!"))
+    .catch((err) => console.error("Login failed: ", err));
