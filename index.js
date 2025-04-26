@@ -6,11 +6,13 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds],
 });
 
-console.log("DISCORD_TOKEN:", process.env.TOKEN); // 혹은 process.env.TOKEN
+
 client
     .login(process.env.TOKEN)
     .then(() => console.log("Logged in!"))
-    .catch((err) => console.error("Login failed: ", err));
+    .catch((error) => {
+        console.error("Login failed:", error); // 로그인 실패 시 더 상세한 오류 메시지 확인
+    });
 
 // 명령어 파일들
 const getPuuidCommand = require("./commands/puuid");
@@ -61,7 +63,12 @@ client.once("ready", async () => {
         console.error("❌ 명령어 등록 중 오류 발생:", error);
     }
 });
-
+client
+    .login(process.env.DISCORD_TOKEN)
+    .then(() => console.log("Logged in!"))
+    .catch((error) => {
+        console.error("Login failed:", error); // 로그인 실패 시 더 상세한 오류 메시지 확인
+    });
 // interactionCreate 이벤트 처리
 client.on("interactionCreate", async (interaction) => {
     if (!interaction.isCommand()) return;
