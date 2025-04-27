@@ -11,6 +11,7 @@ const getPuuidCommand = require("./commands/puuid");
 const handleMatchCommand = require("./commands/match");
 const setupPartyHandlers = require("./commands/party");
 const handleHelpCommand = require("./commands/help");
+const { setupScrimHandlers } = require("./commands/scrim");
 
 // 명령어 컬렉션
 client.commands = new Collection();
@@ -55,12 +56,7 @@ client.once("ready", async () => {
         console.error("❌ 명령어 등록 중 오류 발생:", error);
     }
 });
-client
-    .login(process.env.TOKEN)
-    .then(() => console.log("Logged in!"))
-    .catch((error) => {
-        console.error("Login failed:", error); // 로그인 실패 시 더 상세한 오류 메시지 확인
-    });
+
 // interactionCreate 이벤트 처리
 client.on("interactionCreate", async (interaction) => {
     if (!interaction.isCommand()) return;
@@ -82,6 +78,7 @@ client.on("interactionCreate", async (interaction) => {
 
 // 파티 관련 핸들러
 setupPartyHandlers(client);
+setupScrimHandlers(client);
 
 // 봇 로그인
 client.login(process.env.TOKEN).catch((err) => {
