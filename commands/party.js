@@ -21,10 +21,15 @@ const positions = {
 let lobby = {};
 
 function setupPartyHandlers(client) {
-    // 슬래시 명령어 등록
-    client.on("ready", () => {
-        const commands = [new SlashCommandBuilder().setName("생성").setDescription("게임 모집을 시작합니다.")];
-        client.application.commands.set(commands);
+    client.on("ready", async () => {
+        const command = new SlashCommandBuilder().setName("생성").setDescription("게임 모집을 시작합니다.");
+
+        try {
+            await client.application.commands.create(command);
+            console.log("✅ '/생성' 명령어 등록 완료");
+        } catch (error) {
+            console.error("❌ '/생성' 명령어 등록 실패:", error);
+        }
     });
 
     client.on("interactionCreate", async (interaction) => {
@@ -48,16 +53,27 @@ function setupPartyHandlers(client) {
                     components: [row],
                 });
 
-                // 새로운 모집을 추가 (기존 모집을 삭제하지 않음)
                 lobby[msg.id] = {
                     creator: interaction.user.id,
                     players: {},
                     substitutes: [],
                     messageId: msg.id,
                     startTime: null,
-                    channelId: interaction.channel.id, // 채널 ID도 추가
-                    isClosed: false, // 모집 상태 관리
+                    channelId: interaction.channel.id,
+                    isClosed: false,
                 };
+
+                // 12시간 뒤 자동 삭제 스케줄
+                setTimeout(async () => {
+                    try {
+                        const channel = await client.channels.fetch(lobby[msg.id].channelId);
+                        const message = await channel.messages.fetch(msg.id);
+                        await message.delete();
+                        delete lobby[msg.id];
+                    } catch (error) {
+                        console.error(`❌ 12시간 후 메시지 삭제 실패: ${error}`);
+                    }
+                }, 12 * 60 * 60 * 1000);
 
                 await interaction.reply({ flags: 64, content: "게임 모집이 생성되었습니다." });
             }
@@ -118,51 +134,6 @@ function setupPartyHandlers(client) {
             lobby[msgId].players[action] = userId;
             await updateEmbed(msgId, interaction);
         }
-
-        // 모집 종료 버튼 처리
-        if (action === "end_recruitment") {
-            if (userId !== lobby[msgId].creator) {
-                return interaction.reply({ content: "❌ 당신은 이 모집을 생성한 사용자가 아닙니다.", ephemeral: true });
-            }
-
-            // 모집 종료 처리
-            lobby[msgId].isClosed = true;
-
-            // 버튼 비활성화 및 모집 종료 알림
-            const row = new ActionRowBuilder();
-            for (const [role, emoji] of Object.entries(positions)) {
-                row.addComponents(
-                    new ButtonBuilder()
-                        .setCustomId(role)
-                        .setLabel(`${role} ${emoji}`)
-                        .setStyle(ButtonStyle.Primary)
-                        .setDisabled(true) // 모집 종료 후 모든 버튼 비활성화
-                );
-            }
-
-            const extraRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId("substitute")
-                    .setLabel("예비 참가")
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(true),
-                new ButtonBuilder()
-                    .setCustomId("cancel")
-                    .setLabel("참여 취소")
-                    .setStyle(ButtonStyle.Danger)
-                    .setDisabled(true)
-            );
-
-            const embed = new EmbedBuilder()
-                .setTitle("게임 모집 종료")
-                .setDescription("이 모집은 종료되었습니다. 더 이상 참여할 수 없습니다.")
-                .setColor(0xff0000);
-
-            const msg = await interaction.channel.messages.fetch(msgId);
-            await msg.edit({ embeds: [embed], components: [row, extraRow] });
-
-            await interaction.reply({ content: "모집이 종료되었습니다.", ephemeral: true });
-        }
     });
 }
 
@@ -178,10 +149,10 @@ function removePlayer(msgId, userId) {
 
 async function updateEmbed(msgId, interaction) {
     const msg = await interaction.channel.messages.fetch(msgId);
-    const { startTime, players, substitutes, isClosed } = lobby[msgId];
+    const { startTime, players, substitutes } = lobby[msgId];
 
     const embed = new EmbedBuilder()
-        .setTitle(isClosed ? "게임 모집 종료" : "게임 모집")
+        .setTitle("게임 모집")
         .setDescription(
             `**게임 시작 시간:** ⏳ ${startTime || "미정"}\n\n` +
                 Object.entries(players)
@@ -189,7 +160,7 @@ async function updateEmbed(msgId, interaction) {
                     .join("\n") +
                 `\n\n**예비 참가:** ${substitutes.map((uid) => `<@${uid}>`).join(", ") || "없음"}`
         )
-        .setColor(isClosed ? 0xff0000 : 0x00ff00); // 종료된 모집은 빨간색
+        .setColor(0x00ff00);
 
     const row = new ActionRowBuilder();
     for (const [role, emoji] of Object.entries(positions)) {
@@ -198,29 +169,13 @@ async function updateEmbed(msgId, interaction) {
                 .setCustomId(role)
                 .setLabel(`${role} ${emoji}`)
                 .setStyle(ButtonStyle.Primary)
-                .setDisabled(!!players[role] || isClosed) // 모집 종료시 비활성화
+                .setDisabled(!!players[role])
         );
     }
 
-    // 모집 종료 버튼이 시간 설정 후에만 활성화되도록 추가
-    const extraRow = new ActionRowBuilder();
-    if (!isClosed && startTime) {
-        extraRow.addComponents(
-            new ButtonBuilder().setCustomId("end_recruitment").setLabel("모집 종료").setStyle(ButtonStyle.Danger)
-        );
-    }
-
-    extraRow.addComponents(
-        new ButtonBuilder()
-            .setCustomId("substitute")
-            .setLabel("예비 참가")
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(isClosed),
-        new ButtonBuilder()
-            .setCustomId("cancel")
-            .setLabel("참여 취소")
-            .setStyle(ButtonStyle.Danger)
-            .setDisabled(isClosed)
+    const extraRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId("substitute").setLabel("예비 참가").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("cancel").setLabel("참여 취소").setStyle(ButtonStyle.Danger)
     );
 
     await msg.edit({ embeds: [embed], components: [row, extraRow] });
