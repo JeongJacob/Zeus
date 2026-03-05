@@ -22,19 +22,19 @@ let lobby = {};
 
 function setupPartyHandlers(client) {
     client.on("ready", async () => {
-        const command = new SlashCommandBuilder().setName("생성").setDescription("게임 모집을 시작합니다.");
+        const command = new SlashCommandBuilder().setName("자랭").setDescription("게임 모집을 시작합니다.");
 
         try {
             await client.application.commands.create(command);
-            console.log("✅ '/생성' 명령어 등록 완료");
+            console.log("✅ '/자랭' 명령어 등록 완료");
         } catch (error) {
-            console.error("❌ '/생성' 명령어 등록 실패:", error);
+            console.error("❌ '/자랭' 명령어 등록 실패:", error);
         }
     });
 
     client.on("interactionCreate", async (interaction) => {
         if (interaction.isCommand()) {
-            if (interaction.commandName === "생성") {
+            if (interaction.commandName === "자랭") {
                 const embed = new EmbedBuilder()
                     .setTitle("게임 모집 설정")
                     .setDescription("아래 버튼을 클릭하여 시작 시간을 입력해주세요.")
