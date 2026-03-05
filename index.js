@@ -9,6 +9,7 @@ const client = new Client({
 // 명령어 파일들
 const getPuuidCommand = require("./commands/puuid");
 const handleMatchCommand = require("./commands/match");
+const handleClearCommand = require("./commands/clear");
 const setupPartyHandlers = require("./commands/party");
 const handleHelpCommand = require("./commands/help");
 const { setupScrimHandlers } = require("./commands/scrim");
@@ -18,6 +19,7 @@ client.commands = new Collection();
 client.commands.set(getPuuidCommand.data.name, getPuuidCommand);
 client.commands.set(handleMatchCommand.data.name, handleMatchCommand);
 client.commands.set(handleHelpCommand.data.name, handleHelpCommand);
+client.commands.set(handleClearCommand.data.name, handleClearCommand);
 
 // 봇 로그인 및 슬래시 명령어 등록
 client.once("ready", async () => {
