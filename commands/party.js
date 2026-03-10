@@ -29,7 +29,6 @@ function setupPartyHandlers(client) {
     try {
       await client.application.commands.create(command);
       console.log("'/자랭' 명령어 등록 완료");
-      console.log("hihi");
     } catch (error) {
       console.error("'/자랭' 명령어 등록 실패:", error);
     }
