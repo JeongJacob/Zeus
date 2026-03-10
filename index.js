@@ -5,68 +5,76 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
 
-// 명령어 파일들
-const getPuuidCommand = require("./commands/puuid");
-const handleMatchCommand = require("./commands/match");
-const handleClearCommand = require("./commands/clear");
+client.commands = new Collection();
+
+// 명령어 불러오기
+const puuid = require("./commands/puuid");
+const match = require("./commands/match");
+const clear = require("./commands/clear");
+const help = require("./commands/help");
+
+client.commands.set(puuid.data.name, puuid);
+client.commands.set(match.data.name, match);
+client.commands.set(clear.data.name, clear);
+client.commands.set(help.data.name, help);
+
+// 파티 / 내전 핸들러
 const setupPartyHandlers = require("./commands/party");
-const handleHelpCommand = require("./commands/help");
 const { setupScrimHandlers } = require("./commands/scrim");
 
-// 명령어 컬렉션
-client.commands = new Collection();
-client.commands.set(getPuuidCommand.data.name, getPuuidCommand);
-client.commands.set(handleMatchCommand.data.name, handleMatchCommand);
-client.commands.set(handleHelpCommand.data.name, handleHelpCommand);
-client.commands.set(handleClearCommand.data.name, handleClearCommand);
+setupPartyHandlers(client);
+setupScrimHandlers(client);
 
-// 봇 로그인 및 슬래시 명령어 등록
+// 슬래시 명령어 정의
+const { SlashCommandBuilder } = require("discord.js");
+
+const slashCommands = [
+  new SlashCommandBuilder()
+    .setName("자랭")
+    .setDescription("게임 모집을 시작합니다."),
+
+  new SlashCommandBuilder()
+    .setName("내전")
+    .setDescription("내전을 모집합니다."),
+
+  puuid.data,
+  match.data,
+  clear.data,
+  help.data,
+].map((cmd) => cmd.toJSON());
+
+// 봇 준비
 client.once("ready", async () => {
-  console.log(`✅ 로그인됨: ${client.user.tag}`);
+  console.log(`로그인됨: ${client.user.tag}`);
 
   try {
-    const commands = client.commands.map((command) =>
-      command.data.toJSON()
-    );
+    await client.application.commands.set(slashCommands);
 
-    // 글로벌 슬래시 명령어 등록 (모든 서버)
-    await client.application.commands.set(commands);
-
-    console.log("✅ 글로벌 슬래시 명령어 등록 완료 (모든 서버 사용 가능)");
-  } catch (error) {
-    console.error("❌ 명령어 등록 중 오류 발생:", error);
+    console.log("슬래시 명령어 동기화 완료 (모든 서버)");
+  } catch (err) {
+    console.error("명령어 등록 실패:", err);
   }
 });
 
-// interactionCreate 이벤트 처리
+// 슬래시 명령어 실행
 client.on("interactionCreate", async (interaction) => {
-  if (!interaction.isCommand()) return;
+  if (!interaction.isChatInputCommand()) return;
 
   const command = client.commands.get(interaction.commandName);
-
   if (!command) return;
 
   try {
     await command.execute(interaction);
   } catch (err) {
-    console.error("❌ 명령어 실행 오류:", err);
+    console.error(err);
 
     if (!interaction.replied) {
       await interaction.reply({
-        content: "❌ 명령어 실행 중 오류가 발생했습니다.",
-        ephemeral: true,
+        content: "명령어 실행 중 오류가 발생했습니다.",
+        flags: 64,
       });
     }
   }
 });
 
-// 파티 / 스크림 핸들러
-setupPartyHandlers(client);
-setupScrimHandlers(client);
-
-// 봇 로그인
-client.login(process.env.TOKEN).catch((err) => {
-  console.error("❌ 봇 로그인 실패:", err);
-  process.exit(1);
-});
-
+client.login(process.env.TOKEN);
