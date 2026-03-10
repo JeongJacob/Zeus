@@ -16,6 +16,7 @@ const positions = {
   미드: "⚔️",
   원딜: "🏹",
   서폿: "✨",
+  상관없음: "🎲",
 };
 
 let lobby = {};
@@ -60,6 +61,7 @@ function setupPartyHandlers(client) {
           creatorName: null,
           players: {},
           substitutes: [],
+          any: [],
           messageId: msg.id,
           startTime: null,
           channelId: interaction.channel.id,
@@ -153,6 +155,14 @@ function setupPartyHandlers(client) {
         }
 
         await updateEmbed(msgId, interaction);
+      } else if (action === "상관없음") {
+        removePlayer(msgId, userId);
+
+        if (!lobby[msgId].any.includes(userId)) {
+          lobby[msgId].any.push(userId);
+        }
+
+        await updateEmbed(msgId, interaction);
       } else if (positions[action]) {
         if (lobby[msgId].players[action]) {
           return interaction.reply({
@@ -199,13 +209,16 @@ function removePlayer(msgId, userId) {
   lobby[msgId].substitutes = lobby[msgId].substitutes.filter(
     (uid) => uid !== userId,
   );
+
+  lobby[msgId].any = lobby[msgId].any.filter((uid) => uid !== userId);
 }
 
 async function updateEmbed(msgId, interaction) {
   const msg = await interaction.channel.messages.fetch(msgId);
-  const { startTime, players, substitutes, creatorName } = lobby[msgId];
+  const { startTime, players, substitutes, creatorName, any } = lobby[msgId];
 
   const positionText = Object.keys(positions)
+    .filter((role) => role !== "상관없음")
     .map((role) => {
       const user = players[role];
       return `${positions[role]} ${role}: ${user ? `<@${user}>` : ""}`;
@@ -213,11 +226,11 @@ async function updateEmbed(msgId, interaction) {
     .join("\n");
 
   const embed = new EmbedBuilder()
-
     .setDescription(
       `모집자: ${creatorName || "미입력"}\n` +
         `게임 시작 시간: ${startTime || "미정"}\n\n` +
         `${positionText}\n\n` +
+        `🎲 상관없음: ${any.map((u) => `<@${u}>`).join(", ") || "없음"}\n\n` +
         `예비 참가: ${
           substitutes.map((uid) => `<@${uid}>`).join(", ") || "없음"
         }`,
@@ -232,7 +245,7 @@ async function updateEmbed(msgId, interaction) {
         .setCustomId(role)
         .setLabel(`${role} ${emoji}`)
         .setStyle(ButtonStyle.Primary)
-        .setDisabled(!!players[role]),
+        .setDisabled(role !== "상관없음" && !!players[role]),
     );
   }
 
