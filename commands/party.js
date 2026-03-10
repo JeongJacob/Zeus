@@ -209,7 +209,7 @@ async function updateEmbed(msgId, interaction) {
   const positionText = Object.keys(positions)
     .map((role) => {
       const user = players[role];
-      return `${positions[role]} ${role}: ${user ? `<@${user}>` : "비어있음"}`;
+      return `${positions[role]} ${role}: ${user ? `<@${user}>` : ""}`;
     })
     .join("\n");
 
