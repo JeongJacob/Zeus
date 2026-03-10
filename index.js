@@ -1,5 +1,4 @@
 const { Client, GatewayIntentBits, Collection } = require("discord.js");
-const { clientId, guildIds } = require("./config.json"); // config.json에 클라이언트 ID와 서버 ID 배열 추가
 require("dotenv").config();
 
 const client = new Client({
@@ -26,41 +25,14 @@ client.once("ready", async () => {
   console.log(`✅ 로그인됨: ${client.user.tag}`);
 
   try {
-    // 명령어 등록 전에 기존 명령어가 있는지 확인하고 덮어쓰지 않도록 함
-    const existingCommands = await client.application.commands.fetch();
-    const commandsToRegister = client.commands.map((command) =>
-      command.data.toJSON(),
+    const commands = client.commands.map((command) =>
+      command.data.toJSON()
     );
 
-    // 새로 등록할 명령어들만 필터링
-    const commandsToCreate = commandsToRegister.filter(
-      (command) =>
-        !existingCommands.some(
-          (existingCommand) => existingCommand.name === command.name,
-        ),
-    );
+    // 글로벌 슬래시 명령어 등록 (모든 서버)
+    await client.application.commands.set(commands);
 
-    // 여러 서버에 명령어 등록 (guildIds 배열 사용)
-    if (guildIds && guildIds.length > 0) {
-      for (const guildId of guildIds) {
-        if (commandsToCreate.length > 0) {
-          await client.application.commands.set(commandsToCreate, guildId);
-          console.log(`✅ 서버 ${guildId}에 슬래시 명령어 등록 완료`);
-        } else {
-          console.log(
-            `✅ 서버 ${guildId}에는 이미 모든 명령어가 등록되어 있습니다.`,
-          );
-        }
-      }
-    } else {
-      // 글로벌 명령어 등록
-      if (commandsToCreate.length > 0) {
-        await client.application.commands.set(commandsToCreate);
-        console.log("✅ 글로벌 슬래시 명령어 등록 완료");
-      } else {
-        console.log("✅ 모든 명령어가 이미 등록되어 있습니다.");
-      }
-    }
+    console.log("✅ 글로벌 슬래시 명령어 등록 완료 (모든 서버 사용 가능)");
   } catch (error) {
     console.error("❌ 명령어 등록 중 오류 발생:", error);
   }
@@ -78,19 +50,22 @@ client.on("interactionCreate", async (interaction) => {
     await command.execute(interaction);
   } catch (err) {
     console.error("❌ 명령어 실행 오류:", err);
-    await interaction.reply({
-      content: "❌ 명령어 실행 중 오류가 발생했습니다. 다시 시도해주세요.",
-      ephemeral: true,
-    });
+
+    if (!interaction.replied) {
+      await interaction.reply({
+        content: "❌ 명령어 실행 중 오류가 발생했습니다.",
+        ephemeral: true,
+      });
+    }
   }
 });
 
-// 파티 관련 핸들러
+// 파티 / 스크림 핸들러
 setupPartyHandlers(client);
 setupScrimHandlers(client);
 
 // 봇 로그인
 client.login(process.env.TOKEN).catch((err) => {
   console.error("❌ 봇 로그인 실패:", err);
-  process.exit(1); // 로그인 실패 시 프로세스 종료
+  process.exit(1);
 });
