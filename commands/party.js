@@ -88,19 +88,35 @@ function setupPartyHandlers(client) {
         const action = interaction.customId;
 
         if (action === "set_start_time") {
-            if (userId !== lobby[msgId].creator) {
-                return interaction.reply({ content: "❌ 당신은 이 모집을 생성한 사용자가 아닙니다.", ephemeral: true });
-            }
+    if (userId !== lobby[msgId].creator) {
+        return interaction.reply({ content: "❌ 당신은 이 모집을 생성한 사용자가 아닙니다.", ephemeral: true });
+    }
 
-            const modal = new ModalBuilder().setCustomId("start_time_modal").setTitle("게임 시작 시간 입력");
-            const timeInput = new TextInputBuilder()
-                .setCustomId("start_time_input")
-                .setLabel("게임 시작 시간 입력")
-                .setStyle(TextInputStyle.Short)
-                .setPlaceholder("예: 지금 바로 시작, 20분 후, 18:30 등")
-                .setRequired(true);
+    const member = await interaction.guild.members.fetch(userId);
+    const nickname = member.displayName;
 
-            modal.addComponents(new ActionRowBuilder().addComponents(timeInput));
+    const modal = new ModalBuilder()
+        .setCustomId("start_time_modal")
+        .setTitle("게임 시작 설정");
+
+    const nameInput = new TextInputBuilder()
+        .setCustomId("creator_name_input")
+        .setLabel("모집자 닉네임")
+        .setStyle(TextInputStyle.Short)
+        .setValue(nickname)
+        .setRequired(true);
+
+    const timeInput = new TextInputBuilder()
+        .setCustomId("start_time_input")
+        .setLabel("게임 시작 시간")
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder("예: 지금 바로 시작, 20분 후, 18:30 등")
+        .setRequired(true);
+
+    modal.addComponents(
+        new ActionRowBuilder().addComponents(nameInput),
+        new ActionRowBuilder().addComponents(timeInput)
+    );
 
             try {
                 await interaction.showModal(modal);
@@ -160,7 +176,9 @@ async function updateEmbed(msgId, interaction) {
                     .join("\n") +
                 `\n\n**예비 참가:** ${substitutes.map((uid) => `<@${uid}>`).join(", ") || "없음"}`
         )
+        
         .setColor(0x00ff00);
+        
 
     const row = new ActionRowBuilder();
     for (const [role, emoji] of Object.entries(positions)) {
