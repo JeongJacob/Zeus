@@ -16,7 +16,6 @@ const positions = {
   미드: "⚔️",
   원딜: "🏹",
   서폿: "✨",
-  상관없음: "🎲",
 };
 
 let lobby = {};
@@ -65,27 +64,23 @@ function setupPartyHandlers(client) {
           messageId: msg.id,
           startTime: null,
           channelId: interaction.channel.id,
-          isClosed: false,
         };
 
-        setTimeout(
-          async () => {
-            try {
-              if (!lobby[msg.id]) return;
+        setTimeout(async () => {
+          try {
+            if (!lobby[msg.id]) return;
 
-              const channel = await client.channels.fetch(
-                lobby[msg.id].channelId,
-              );
-              const message = await channel.messages.fetch(msg.id);
+            const channel = await client.channels.fetch(
+              lobby[msg.id].channelId,
+            );
+            const message = await channel.messages.fetch(msg.id);
 
-              await message.delete();
-              delete lobby[msg.id];
-            } catch (error) {
-              console.error(`12시간 후 메시지 삭제 실패: ${error}`);
-            }
-          },
-          12 * 60 * 60 * 1000,
-        );
+            await message.delete();
+            delete lobby[msg.id];
+          } catch (error) {
+            console.error(`12시간 후 메시지 삭제 실패: ${error}`);
+          }
+        }, 12 * 60 * 60 * 1000);
 
         await interaction.reply({
           ephemeral: true,
@@ -144,37 +139,45 @@ function setupPartyHandlers(client) {
         return interaction.showModal(modal);
       }
 
+      const msgId2 = interaction.message.id;
+
       if (action === "cancel") {
-        removePlayer(msgId, userId);
-        await updateEmbed(msgId, interaction);
-      } else if (action === "substitute") {
-        removePlayer(msgId, userId);
+        removePlayer(msgId2, userId);
+        await updateEmbed(msgId2, interaction);
+      }
 
-        if (!lobby[msgId].substitutes.includes(userId)) {
-          lobby[msgId].substitutes.push(userId);
+      else if (action === "substitute") {
+        removePlayer(msgId2, userId);
+
+        if (!lobby[msgId2].substitutes.includes(userId)) {
+          lobby[msgId2].substitutes.push(userId);
         }
 
-        await updateEmbed(msgId, interaction);
-      } else if (action === "상관없음") {
-        removePlayer(msgId, userId);
+        await updateEmbed(msgId2, interaction);
+      }
 
-        if (!lobby[msgId].any.includes(userId)) {
-          lobby[msgId].any.push(userId);
+      else if (action === "any") {
+        removePlayer(msgId2, userId);
+
+        if (!lobby[msgId2].any.includes(userId)) {
+          lobby[msgId2].any.push(userId);
         }
 
-        await updateEmbed(msgId, interaction);
-      } else if (positions[action]) {
-        if (lobby[msgId].players[action]) {
+        await updateEmbed(msgId2, interaction);
+      }
+
+      else if (positions[action]) {
+        if (lobby[msgId2].players[action]) {
           return interaction.reply({
             content: "이미 선택된 포지션입니다.",
             ephemeral: true,
           });
         }
 
-        removePlayer(msgId, userId);
-        lobby[msgId].players[action] = userId;
+        removePlayer(msgId2, userId);
+        lobby[msgId2].players[action] = userId;
 
-        await updateEmbed(msgId, interaction);
+        await updateEmbed(msgId2, interaction);
       }
     }
 
@@ -218,7 +221,6 @@ async function updateEmbed(msgId, interaction) {
   const { startTime, players, substitutes, creatorName, any } = lobby[msgId];
 
   const positionText = Object.keys(positions)
-    .filter((role) => role !== "상관없음")
     .map((role) => {
       const user = players[role];
       return `${positions[role]} ${role}: ${user ? `<@${user}>` : ""}`;
@@ -237,23 +239,30 @@ async function updateEmbed(msgId, interaction) {
     )
     .setColor(0x00ff00);
 
-  const row = new ActionRowBuilder();
+  const row1 = new ActionRowBuilder();
+  const row2 = new ActionRowBuilder();
 
   for (const [role, emoji] of Object.entries(positions)) {
-    row.addComponents(
+    row1.addComponents(
       new ButtonBuilder()
         .setCustomId(role)
         .setLabel(`${role} ${emoji}`)
         .setStyle(ButtonStyle.Primary)
-        .setDisabled(role !== "상관없음" && !!players[role]),
+        .setDisabled(!!players[role]),
     );
   }
 
-  const extraRow = new ActionRowBuilder().addComponents(
+  row2.addComponents(
+    new ButtonBuilder()
+      .setCustomId("any")
+      .setLabel("상관없음 🎲")
+      .setStyle(ButtonStyle.Secondary),
+
     new ButtonBuilder()
       .setCustomId("substitute")
       .setLabel("예비 참가")
       .setStyle(ButtonStyle.Secondary),
+
     new ButtonBuilder()
       .setCustomId("cancel")
       .setLabel("참여 취소")
@@ -262,7 +271,7 @@ async function updateEmbed(msgId, interaction) {
 
   await msg.edit({
     embeds: [embed],
-    components: [row, extraRow],
+    components: [row1, row2],
   });
 
   if (!interaction.deferred && !interaction.replied) {
