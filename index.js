@@ -70,10 +70,3 @@ client.login(process.env.TOKEN).catch((err) => {
   process.exit(1);
 });
 
-client.once("ready", async () => {
-
-  await client.application.commands.set([]);
-
-  console.log("모든 명령어 초기화 완료");
-
-});
