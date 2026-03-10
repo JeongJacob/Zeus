@@ -7,72 +7,59 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// 명령어 불러오기
+// 명령어 모듈 로드
+const party = require("./commands/party");
+const scrim = require("./commands/scrim");
 const puuid = require("./commands/puuid");
 const match = require("./commands/match");
 const clear = require("./commands/clear");
 const help = require("./commands/help");
 
-client.commands.set(puuid.data.name, puuid);
-client.commands.set(match.data.name, match);
-client.commands.set(clear.data.name, clear);
-client.commands.set(help.data.name, help);
+// 커맨드 등록
+const commands = [party, scrim, puuid, match, clear, help];
+commands.forEach((cmd) => {
+  client.commands.set(cmd.data.name, cmd);
+});
 
-// 파티 / 내전 핸들러
-const setupPartyHandlers = require("./commands/party");
-const { setupScrimHandlers } = require("./commands/scrim");
-
-setupPartyHandlers(client);
-setupScrimHandlers(client);
-
-// 슬래시 명령어 정의
-const { SlashCommandBuilder } = require("discord.js");
-
-const slashCommands = [
-  new SlashCommandBuilder()
-    .setName("자랭")
-    .setDescription("게임 모집을 시작합니다."),
-
-  new SlashCommandBuilder()
-    .setName("내전")
-    .setDescription("내전을 모집합니다."),
-
-  puuid.data,
-  match.data,
-  clear.data,
-  help.data,
-].map((cmd) => cmd.toJSON());
-
-// 봇 준비
 client.once("ready", async () => {
   console.log(`로그인됨: ${client.user.tag}`);
-
   try {
+    const slashCommands = commands.map((cmd) => cmd.data.toJSON());
     await client.application.commands.set(slashCommands);
-
-    console.log("슬래시 명령어 동기화 완료 (모든 서버)");
+    console.log("슬래시 명령어 동기화 완료");
   } catch (err) {
     console.error("명령어 등록 실패:", err);
   }
 });
 
-// 슬래시 명령어 실행
+// ⭐ 통합 인터랙션 리스너 (여기서 모든 것을 배분)
 client.on("interactionCreate", async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
+  // 1. 슬래시 명령어 처리
+  if (interaction.isChatInputCommand()) {
+    const command = client.commands.get(interaction.commandName);
+    if (!command) return;
 
-  const command = client.commands.get(interaction.commandName);
-  if (!command) return;
+    try {
+      await command.execute(interaction);
+    } catch (err) {
+      console.error(err);
+      if (!interaction.replied) {
+        await interaction.reply({ content: "오류가 발생했습니다.", flags: 64 });
+      }
+    }
+    return;
+  }
 
-  try {
-    await command.execute(interaction);
-  } catch (err) {
-    console.error(err);
+  // 2. 버튼 및 모달 처리
+  if (interaction.isButton() || interaction.isModalSubmit()) {
+    const customId = interaction.customId;
 
-    if (!interaction.replied) {
-      await interaction.reply({
-        content: "명령어 실행 중 오류가 발생했습니다.",
-        flags: 64,
-      });
+    // ID 규칙에 따라 핸들러 배분
+    if (customId.includes("scrim")) {
+      await scrim.handleScrimInteraction(interaction);
+    } else {
+      // 자랭 모집(party) 및 기타 포지션 버튼 처리
+      await party.handlePartyInteraction(interaction);
     }
   }
 });
