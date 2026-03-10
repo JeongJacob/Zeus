@@ -66,21 +66,24 @@ function setupPartyHandlers(client) {
           channelId: interaction.channel.id,
         };
 
-        setTimeout(async () => {
-          try {
-            if (!lobby[msg.id]) return;
+        setTimeout(
+          async () => {
+            try {
+              if (!lobby[msg.id]) return;
 
-            const channel = await client.channels.fetch(
-              lobby[msg.id].channelId,
-            );
-            const message = await channel.messages.fetch(msg.id);
+              const channel = await client.channels.fetch(
+                lobby[msg.id].channelId,
+              );
+              const message = await channel.messages.fetch(msg.id);
 
-            await message.delete();
-            delete lobby[msg.id];
-          } catch (error) {
-            console.error(`12시간 후 메시지 삭제 실패: ${error}`);
-          }
-        }, 12 * 60 * 60 * 1000);
+              await message.delete();
+              delete lobby[msg.id];
+            } catch (error) {
+              console.error(`12시간 후 메시지 삭제 실패: ${error}`);
+            }
+          },
+          12 * 60 * 60 * 1000,
+        );
 
         await interaction.reply({
           ephemeral: true,
@@ -144,9 +147,7 @@ function setupPartyHandlers(client) {
       if (action === "cancel") {
         removePlayer(msgId2, userId);
         await updateEmbed(msgId2, interaction);
-      }
-
-      else if (action === "substitute") {
+      } else if (action === "substitute") {
         removePlayer(msgId2, userId);
 
         if (!lobby[msgId2].substitutes.includes(userId)) {
@@ -154,9 +155,7 @@ function setupPartyHandlers(client) {
         }
 
         await updateEmbed(msgId2, interaction);
-      }
-
-      else if (action === "any") {
+      } else if (action === "any") {
         removePlayer(msgId2, userId);
 
         if (!lobby[msgId2].any.includes(userId)) {
@@ -164,9 +163,7 @@ function setupPartyHandlers(client) {
         }
 
         await updateEmbed(msgId2, interaction);
-      }
-
-      else if (positions[action]) {
+      } else if (positions[action]) {
         if (lobby[msgId2].players[action]) {
           return interaction.reply({
             content: "이미 선택된 포지션입니다.",
@@ -232,10 +229,8 @@ async function updateEmbed(msgId, interaction) {
       `모집자: ${creatorName || "미입력"}\n` +
         `게임 시작 시간: ${startTime || "미정"}\n\n` +
         `${positionText}\n\n` +
-        `🎲 상관없음: ${any.map((u) => `<@${u}>`).join(", ") || "없음"}\n\n` +
-        `예비 참가: ${
-          substitutes.map((uid) => `<@${uid}>`).join(", ") || "없음"
-        }`,
+        `🎲 상관없음: ${any.map((u) => `<@${u}>`).join(", ") || ""}\n\n` +
+        `예비 참가: ${substitutes.map((uid) => `<@${uid}>`).join(", ") || ""}`,
     )
     .setColor(0x00ff00);
 
