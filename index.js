@@ -21,6 +21,28 @@ commands.forEach((cmd) => {
   client.commands.set(cmd.data.name, cmd);
 });
 
+client.once("ready", async () => {
+    console.log(`✅ 로그인됨: ${client.user.tag}`);
+
+    try {
+        // 1. 모든 길드(서버)의 명령어 삭제
+        const guilds = await client.guilds.fetch();
+        for (const [guildId, guild] of guilds) {
+            const fullGuild = await guild.fetch();
+            await fullGuild.commands.set([]); 
+            console.log(`🧹 ${fullGuild.name} 서버 명령어 초기화 완료`);
+        }
+
+        // 2. 글로벌 명령어 삭제
+        await client.application.commands.set([]);
+        console.log("🧹 글로벌 명령어 초기화 완료");
+
+        console.log("⚠️ 모든 명령어가 삭제되었습니다. 이제 이 코드를 지우고 다시 실행하세요.");
+    } catch (err) {
+        console.error("초기화 실패:", err);
+    }
+});
+
 // client.once("ready", async () => {
 //   console.log(`로그인됨: ${client.user.tag}`);
 //   try {
