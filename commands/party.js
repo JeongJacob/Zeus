@@ -37,11 +37,15 @@ async function execute(interaction) {
       .setStyle(ButtonStyle.Primary),
   );
 
-  const msg = await interaction.channel.send({
+  if (!interaction.channel) {
+    return interaction.reply({ content: "명령어를 실행할 채널을 찾을 수 없습니다.", flags: 64 });
+}
+
+const msg = await interaction.channel.send({
     content: "@everyone",
     embeds: [embed],
     components: [row],
-  });
+});
 
   lobby[msg.id] = {
     creator: interaction.user.id,
