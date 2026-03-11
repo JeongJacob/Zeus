@@ -13,7 +13,7 @@ const fs = require("fs");
 const path = require("path");
 
 // --- 서버별 데이터 관리 설정 ---
-const DATA_DIR = path.join(__dirname, "../data/party.json");
+const DATA_DIR = path.join(__dirname, "../data/party");
 
 // 서버별 데이터 로드 함수
 function loadGuildData(guildId) {
