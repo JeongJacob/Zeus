@@ -30,54 +30,54 @@ commands.forEach((cmd) => {
   }
 });
 
-// client.once("ready", async () => {
-//   console.log(`✅ 로그인됨: ${client.user.tag}`);
-
-//   try {
-//     const commandData = commands.map((cmd) => cmd.data.toJSON());
-//     console.log(`🔄 ${commandData.length}개의 명령어 동기화 시작...`);
-
-//     // 글로벌 명령어 등록
-//     await client.application.commands.set(commandData);
-//     console.log("✅ 글로벌 명령어 동기화 요청 완료");
-
-//     // 각 서버(길드)마다 즉시 동기화 (이게 떠야 채팅창에 바로 나옵니다)
-//     const guilds = await client.guilds.fetch();
-//     for (const [guildId, guild] of guilds) {
-//       try {
-//         await client.application.commands.set(commandData, guildId);
-//         console.log(
-//           `✅ [${guild.name || guildId}] 서버 명령어 즉시 동기화 완료`,
-//         );
-//       } catch (err) {
-//         console.error(`❌ [${guildId}] 서버 동기화 실패:`, err.message);
-//       }
-//     }
-//   } catch (error) {
-//     console.error("❌ 전체 명령어 동기화 중 에러 발생:", error);
-//   }
-// });
-
 client.once("ready", async () => {
   console.log(`✅ 로그인됨: ${client.user.tag}`);
 
   try {
-    // 1. 글로벌 명령어 전체 삭제
-    await client.application.commands.set([]);
-    console.log("🗑️ 글로벌 명령어 전체 삭제 완료");
+    const commandData = commands.map((cmd) => cmd.data.toJSON());
+    console.log(`🔄 ${commandData.length}개의 명령어 동기화 시작...`);
 
-    // 2. 모든 서버(길드)의 명령어 전체 삭제
+    // 글로벌 명령어 등록
+    await client.application.commands.set(commandData);
+    console.log("✅ 글로벌 명령어 동기화 요청 완료");
+
+    // 각 서버(길드)마다 즉시 동기화 (이게 떠야 채팅창에 바로 나옵니다)
     const guilds = await client.guilds.fetch();
     for (const [guildId, guild] of guilds) {
-      await client.application.commands.set([], guildId);
-      console.log(`🗑️ [${guild.name}] 서버 명령어 삭제 완료`);
+      try {
+        await client.application.commands.set(commandData, guildId);
+        console.log(
+          `✅ [${guild.name || guildId}] 서버 명령어 즉시 동기화 완료`,
+        );
+      } catch (err) {
+        console.error(`❌ [${guildId}] 서버 동기화 실패:`, err.message);
+      }
     }
-
-    console.log("✨ 모든 명령어가 초기화되었습니다. 이제 이 코드를 지우고 다시 동기화하세요.");
   } catch (error) {
-    console.error("❌ 명령어 삭제 중 에러 발생:", error);
+    console.error("❌ 전체 명령어 동기화 중 에러 발생:", error);
   }
 });
+
+// client.once("ready", async () => {
+//   console.log(`✅ 로그인됨: ${client.user.tag}`);
+
+//   try {
+//     // 1. 글로벌 명령어 전체 삭제
+//     await client.application.commands.set([]);
+//     console.log("🗑️ 글로벌 명령어 전체 삭제 완료");
+
+//     // 2. 모든 서버(길드)의 명령어 전체 삭제
+//     const guilds = await client.guilds.fetch();
+//     for (const [guildId, guild] of guilds) {
+//       await client.application.commands.set([], guildId);
+//       console.log(`🗑️ [${guild.name}] 서버 명령어 삭제 완료`);
+//     }
+
+//     console.log("✨ 모든 명령어가 초기화되었습니다. 이제 이 코드를 지우고 다시 동기화하세요.");
+//   } catch (error) {
+//     console.error("❌ 명령어 삭제 중 에러 발생:", error);
+//   }
+// });
 
 // 인터랙션 리스너
 client.on("interactionCreate", async (interaction) => {
