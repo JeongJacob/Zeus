@@ -27,7 +27,10 @@ const data = new SlashCommandBuilder()
 async function execute(interaction) {
   // 1. 채널 확인 및 즉시 응답 (봇이 터지는 것을 방지)
   if (!interaction.channel) {
-    return interaction.reply({ content: "명령어를 실행할 채널을 찾을 수 없습니다.", flags: 64 });
+    return interaction.reply({
+      content: "명령어를 실행할 채널을 찾을 수 없습니다.",
+      flags: 64,
+    });
   }
 
   // 봇이 생각 중임을 먼저 알림 (3초 제한 해결 및 안정성 확보)
@@ -68,26 +71,39 @@ async function execute(interaction) {
       channelId: interaction.channel.id,
     };
 
-    // 12시간 후 삭제 로직
-    // setTimeout(async () => {
-    //   try {
-    //     if (!lobby[msg.id]) return;
-    //     const channel = await interaction.client.channels.fetch(lobby[msg.id].channelId);
-    //     const message = await channel.messages.fetch(msg.id);
-    //     if (message) await message.delete();
-    //     delete lobby[msg.id];
-    //   } catch (error) {
-    //     // Unknown Message 에러 등은 무시하도록 설정
-    //     if (error.code !== 10008) console.error(`12시간 후 메시지 삭제 실패: ${error}`);
-    //   }
-    // }, 12 * 60 * 60 * 1000);
+    // 12시간 후 삭제 안전 버전
+    setTimeout(
+      async () => {
+        try {
+          if (!lobby[msg.id]) return;
+          const channel = await interaction.client.channels
+            .fetch(lobby[msg.id].channelId)
+            .catch(() => null);
+          if (!channel) return;
 
+          const message = await channel.messages
+            .fetch(msg.id)
+            .catch(() => null);
+          if (message) {
+            await message.delete().catch(() => null);
+          }
+          delete lobby[msg.id];
+        } catch (error) {
+          // 절대 봇이 죽지 않게 로그만 남김
+          console.log("자동 삭제 중 경미한 에러 발생 (봇 유지됨)");
+        }
+      },
+      12 * 60 * 60 * 1000,
+    );
     // 응답 업데이트
-    await interaction.editReply({ content: "✅ 게임 모집이 성공적으로 생성되었습니다." });
-
+    await interaction.editReply({
+      content: "✅ 게임 모집이 성공적으로 생성되었습니다.",
+    });
   } catch (err) {
     console.error("메시지 전송 실패:", err);
-    await interaction.editReply({ content: "❌ 메시지 전송 중 오류가 발생했습니다." });
+    await interaction.editReply({
+      content: "❌ 메시지 전송 중 오류가 발생했습니다.",
+    });
   }
 }
 
@@ -111,7 +127,8 @@ async function handlePartyInteraction(interaction) {
           flags: 64,
         });
       }
-      const nickname = interaction.member?.displayName || interaction.user.username;
+      const nickname =
+        interaction.member?.displayName || interaction.user.username;
       const modal = new ModalBuilder()
         .setCustomId(`party_modal:${msgId}`)
         .setTitle("게임 시작 설정");
@@ -161,8 +178,10 @@ async function handlePartyInteraction(interaction) {
 
   if (interaction.type === InteractionType.ModalSubmit) {
     if (customId.startsWith("party_modal:")) {
-      lobby[msgId].creatorName = interaction.fields.getTextInputValue("creator_name_input");
-      lobby[msgId].startTime = interaction.fields.getTextInputValue("start_time_input");
+      lobby[msgId].creatorName =
+        interaction.fields.getTextInputValue("creator_name_input");
+      lobby[msgId].startTime =
+        interaction.fields.getTextInputValue("start_time_input");
       await updateEmbed(msgId, interaction);
     }
   }
@@ -176,7 +195,9 @@ function removePlayer(msgId, userId) {
       break;
     }
   }
-  lobby[msgId].substitutes = lobby[msgId].substitutes.filter((uid) => uid !== userId);
+  lobby[msgId].substitutes = lobby[msgId].substitutes.filter(
+    (uid) => uid !== userId,
+  );
   lobby[msgId].any = lobby[msgId].any.filter((uid) => uid !== userId);
 }
 
@@ -216,13 +237,23 @@ async function updateEmbed(msgId, interaction) {
     }
 
     row2.addComponents(
-      new ButtonBuilder().setCustomId("party_any").setLabel("상관없음 🎲").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("party_substitute").setLabel("예비 참가").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("party_cancel").setLabel("참여 취소").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId("party_any")
+        .setLabel("상관없음 🎲")
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId("party_substitute")
+        .setLabel("예비 참가")
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId("party_cancel")
+        .setLabel("참여 취소")
+        .setStyle(ButtonStyle.Danger),
     );
 
     await msg.edit({ embeds: [embed], components: [row1, row2] });
-    if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
+    if (!interaction.deferred && !interaction.replied)
+      await interaction.deferUpdate();
   } catch (e) {
     console.error("Embed 업데이트 실패:", e);
   }
