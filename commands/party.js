@@ -9,6 +9,34 @@ const {
   InteractionType,
   SlashCommandBuilder,
 } = require("discord.js");
+const fs = require("fs");
+const path = require("path");
+
+// --- JSON 데이터 관리 로직 ---
+const dataPath = path.join(__dirname, "../data/party.json");
+
+// 데이터 로드: 파일이나 폴더가 없으면 생성하고 읽어옵니다.
+function loadLobby() {
+  try {
+    const dirPath = path.dirname(dataPath);
+    if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
+    if (!fs.existsSync(dataPath))
+      fs.writeFileSync(dataPath, JSON.stringify({}));
+    return JSON.parse(fs.readFileSync(dataPath, "utf-8"));
+  } catch (err) {
+    console.error("데이터 로드 실패:", err);
+    return {};
+  }
+}
+
+// 데이터 저장: 데이터 변경 시마다 호출하여 파일에 기록합니다.
+function saveLobby(data) {
+  try {
+    fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error("데이터 저장 실패:", err);
+  }
+}
 
 const positions = {
   탑: "🛡️",
@@ -18,7 +46,8 @@ const positions = {
   서폿: "✨",
 };
 
-let lobby = {};
+// 봇 시작 시 메모리에 데이터 로드
+let lobby = loadLobby();
 
 const data = new SlashCommandBuilder()
   .setName("자랭")
@@ -70,6 +99,7 @@ async function execute(interaction) {
       startTime: null,
       channelId: interaction.channel.id,
     };
+    saveLobby(lobby); // 파일에 기록
 
     // 12시간 후 삭제 안전 버전
     setTimeout(
@@ -88,6 +118,7 @@ async function execute(interaction) {
             await message.delete().catch(() => null);
           }
           delete lobby[msg.id];
+          saveLobby(lobby); // 삭제 후 파일 갱신
         } catch (error) {
           // 절대 봇이 죽지 않게 로그만 남김
           console.log("자동 삭제 중 경미한 에러 발생 (봇 유지됨)");
@@ -117,7 +148,16 @@ async function handlePartyInteraction(interaction) {
     ? customId.split(":")[1]
     : interaction.message?.id;
 
-  if (!msgId || !lobby[msgId]) return;
+  if (!msgId || !lobby[msgId]) {
+    // 봇 재시작 등으로 데이터가 없을 경우 대응
+    if (interaction.isButton() || interaction.isModalSubmit()) {
+      return interaction.reply({
+        content: "❌ 만료된 모집이거나 데이터를 찾을 수 없습니다.",
+        flags: 64,
+      });
+    }
+    return;
+  }
 
   if (interaction.isButton()) {
     if (customId === "party_set_start_time") {
@@ -173,6 +213,7 @@ async function handlePartyInteraction(interaction) {
       removePlayer(msgId, userId);
       lobby[msgId].players[customId] = userId;
     }
+    saveLobby(lobby); // 변경사항 파일 저장
     await updateEmbed(msgId, interaction);
   }
 
@@ -182,6 +223,7 @@ async function handlePartyInteraction(interaction) {
         interaction.fields.getTextInputValue("creator_name_input");
       lobby[msgId].startTime =
         interaction.fields.getTextInputValue("start_time_input");
+      saveLobby(lobby); // 변경사항 파일 저장
       await updateEmbed(msgId, interaction);
     }
   }
@@ -258,5 +300,29 @@ async function updateEmbed(msgId, interaction) {
     console.error("Embed 업데이트 실패:", e);
   }
 }
+
+// 아래는 index.js용 명령어 초기화 주석 코드입니다. (보존)
+/*
+client.once("ready", async () => {
+  console.log(`✅ 로그인됨: ${client.user.tag}`);
+
+  try {
+    // 1. 글로벌 명령어 전체 삭제
+    await client.application.commands.set([]);
+    console.log("🗑️ 글로벌 명령어 전체 삭제 완료");
+
+    // 2. 모든 서버(길드)의 명령어 전체 삭제
+    const guilds = await client.guilds.fetch();
+    for (const [guildId, guild] of guilds) {
+      await client.application.commands.set([], guildId);
+      console.log(`🗑️ [${guild.name}] 서버 명령어 삭제 완료`);
+    }
+
+    console.log("✨ 모든 명령어가 초기화되었습니다. 이제 이 코드를 지우고 다시 동기화하세요.");
+  } catch (error) {
+    console.error("❌ 명령어 삭제 중 에러 발생:", error);
+  }
+});
+*/
 
 module.exports = { data, execute, handlePartyInteraction };
