@@ -69,18 +69,18 @@ async function execute(interaction) {
     };
 
     // 12시간 후 삭제 로직
-    setTimeout(async () => {
-      try {
-        if (!lobby[msg.id]) return;
-        const channel = await interaction.client.channels.fetch(lobby[msg.id].channelId);
-        const message = await channel.messages.fetch(msg.id);
-        if (message) await message.delete();
-        delete lobby[msg.id];
-      } catch (error) {
-        // Unknown Message 에러 등은 무시하도록 설정
-        if (error.code !== 10008) console.error(`12시간 후 메시지 삭제 실패: ${error}`);
-      }
-    }, 12 * 60 * 60 * 1000);
+    // setTimeout(async () => {
+    //   try {
+    //     if (!lobby[msg.id]) return;
+    //     const channel = await interaction.client.channels.fetch(lobby[msg.id].channelId);
+    //     const message = await channel.messages.fetch(msg.id);
+    //     if (message) await message.delete();
+    //     delete lobby[msg.id];
+    //   } catch (error) {
+    //     // Unknown Message 에러 등은 무시하도록 설정
+    //     if (error.code !== 10008) console.error(`12시간 후 메시지 삭제 실패: ${error}`);
+    //   }
+    // }, 12 * 60 * 60 * 1000);
 
     // 응답 업데이트
     await interaction.editReply({ content: "✅ 게임 모집이 성공적으로 생성되었습니다." });
