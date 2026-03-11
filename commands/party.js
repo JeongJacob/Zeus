@@ -38,14 +38,16 @@ async function execute(interaction) {
   );
 
   if (!interaction.channel) {
-    return interaction.reply({ content: "명령어를 실행할 채널을 찾을 수 없습니다.", flags: 64 });
-}
+    return console.error("채널을 찾을 수 없습니다.");
+  }
 
-const msg = await interaction.channel.send({
-    content: "@everyone",
-    embeds: [embed],
-    components: [row],
-});
+  const msg = await interaction.channel
+    .send({
+      content: "@everyone",
+      embeds: [embed],
+      components: [row],
+    })
+    .catch((err) => console.error("메시지 전송 실패:", err));
 
   lobby[msg.id] = {
     creator: interaction.user.id,
