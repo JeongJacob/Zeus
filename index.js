@@ -21,16 +21,16 @@ commands.forEach((cmd) => {
   client.commands.set(cmd.data.name, cmd);
 });
 
-client.once("ready", async () => {
-  console.log(`로그인됨: ${client.user.tag}`);
-  try {
-    const slashCommands = commands.map((cmd) => cmd.data.toJSON());
-    await client.application.commands.set(slashCommands);
-    console.log("슬래시 명령어 동기화 완료");
-  } catch (err) {
-    console.error("명령어 등록 실패:", err);
-  }
-});
+// client.once("ready", async () => {
+//   console.log(`로그인됨: ${client.user.tag}`);
+//   try {
+//     const slashCommands = commands.map((cmd) => cmd.data.toJSON());
+//     await client.application.commands.set(slashCommands);
+//     console.log("슬래시 명령어 동기화 완료");
+//   } catch (err) {
+//     console.error("명령어 등록 실패:", err);
+//   }
+// });
 
 // ⭐ 통합 인터랙션 리스너 (여기서 모든 것을 배분)
 client.on("interactionCreate", async (interaction) => {
