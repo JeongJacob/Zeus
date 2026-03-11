@@ -93,12 +93,47 @@ async function handleScrimInteraction(interaction) {
   const guildId = interaction.guild?.id;
   if (!guildId) return;
 
+  // ✅ customId 맨 먼저 선언 (TDZ 방지)
+  const customId = interaction.customId;
+  if (!customId) return;
+
   const guildLobby = loadScrimData(guildId);
   const userId = interaction.user.id;
-  const customId = interaction.customId;
+
   const msgId = interaction.isModalSubmit()
     ? customId.split(":")[1]
-    : interaction.message.id;
+    : interaction.message?.id;
+
+  // ✅ scrim_delete_confirm 처리 (msgId 체크 전에 처리)
+  if (customId.startsWith("scrim_delete_confirm:")) {
+    const targetMsgId = customId.split(":")[1];
+    try {
+      const originalChannel = await interaction.client.channels
+        .fetch(guildLobby[targetMsgId]?.channelId)
+        .catch(() => null);
+      if (originalChannel) {
+        const originalMsg = await originalChannel.messages
+          .fetch(targetMsgId)
+          .catch(() => null);
+        if (originalMsg) await originalMsg.delete().catch(() => null);
+      }
+      delete guildLobby[targetMsgId];
+      saveScrimData(guildId, guildLobby);
+      return interaction.update({
+        content: "✅ 내전 모집이 삭제되었습니다.",
+        components: [],
+      });
+    } catch (e) {
+      console.error("내전 삭제 실패:", e);
+    }
+  }
+
+  if (customId === "scrim_delete_cancel") {
+    return interaction.update({
+      content: "삭제가 취소되었습니다.",
+      components: [],
+    });
+  }
 
   if (!msgId || !guildLobby[msgId]) {
     if (interaction.isButton() || interaction.isModalSubmit()) {
@@ -138,6 +173,36 @@ async function handleScrimInteraction(interaction) {
       interaction.fields.getTextInputValue("start_time_input");
     saveScrimData(guildId, guildLobby);
     await updateScrimEmbed(msgId, interaction, guildLobby[msgId]);
+  }
+
+  // ✅ 모집 삭제 버튼
+  if (customId === "scrim_delete") {
+    const isCreator = userId === guildLobby[msgId].creator;
+    const isAdmin = interaction.member.permissions.has("Administrator");
+
+    if (!isCreator && !isAdmin) {
+      return interaction.reply({
+        content: "❌ 모집자 또는 관리자만 삭제할 수 있습니다.",
+        flags: 64,
+      });
+    }
+
+    return interaction.reply({
+      content: "정말 내전 모집을 삭제하시겠습니까?",
+      flags: 64,
+      components: [
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`scrim_delete_confirm:${msgId}`)
+            .setLabel("확인 ✅")
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId("scrim_delete_cancel")
+            .setLabel("취소")
+            .setStyle(ButtonStyle.Secondary),
+        ),
+      ],
+    });
   }
 
   if (["join_scrim", "substitute_scrim", "cancel_scrim"].includes(customId)) {
@@ -183,7 +248,6 @@ async function updateScrimEmbed(msgId, interaction, lobbyData) {
       )
       .setColor(isFull ? 0xe74c3c : 0x3498db);
 
-    // 버튼: 풀방이면 참가 버튼 비활성화, 시간이 정해지면 항상 표시
     const joinRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("join_scrim")
@@ -198,6 +262,11 @@ async function updateScrimEmbed(msgId, interaction, lobbyData) {
         .setCustomId("cancel_scrim")
         .setLabel("참가 취소")
         .setStyle(ButtonStyle.Danger),
+      // ✅ 모집 삭제 버튼 추가
+      new ButtonBuilder()
+        .setCustomId("scrim_delete")
+        .setLabel("모집 삭제 🗑️")
+        .setStyle(ButtonStyle.Danger),
     );
 
     await msg.edit({ embeds: [embed], components: [joinRow] });
@@ -208,17 +277,14 @@ async function updateScrimEmbed(msgId, interaction, lobbyData) {
   }
 }
 
-// 아래는 index.js용 명령어 초기화 주석 코드입니다. (보존)
 /*
 client.once("ready", async () => {
   console.log(`✅ 로그인됨: ${client.user.tag}`);
 
   try {
-    // 1. 글로벌 명령어 전체 삭제
     await client.application.commands.set([]);
     console.log("🗑️ 글로벌 명령어 전체 삭제 완료");
 
-    // 2. 모든 서버(길드)의 명령어 전체 삭제
     const guilds = await client.guilds.fetch();
     for (const [guildId, guild] of guilds) {
       await client.application.commands.set([], guildId);

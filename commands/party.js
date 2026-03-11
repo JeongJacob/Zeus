@@ -12,15 +12,12 @@ const {
 const fs = require("fs");
 const path = require("path");
 
-// --- 서버별 데이터 관리 설정 ---
 const DATA_DIR = path.join(__dirname, "../data/party");
 
-// 서버별 데이터 로드 함수
 function loadGuildData(guildId) {
   try {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     const filePath = path.join(DATA_DIR, `${guildId}.json`);
-
     if (!fs.existsSync(filePath) || fs.statSync(filePath).size === 0) return {};
     const content = fs.readFileSync(filePath, "utf-8").trim();
     return content ? JSON.parse(content) : {};
@@ -30,7 +27,6 @@ function loadGuildData(guildId) {
   }
 }
 
-// 서버별 데이터 저장 함수
 function saveGuildData(guildId, data) {
   try {
     const filePath = path.join(DATA_DIR, `${guildId}.json`);
@@ -53,7 +49,6 @@ const data = new SlashCommandBuilder()
   .setDescription("게임 모집을 시작합니다.");
 
 async function execute(interaction) {
-  // 1. 채널 확인 및 즉시 응답 (봇이 터지는 것을 방지)
   if (!interaction.guild) {
     return interaction.reply({
       content: "서버에서만 명령어를 실행할 수 있습니다.",
@@ -61,7 +56,6 @@ async function execute(interaction) {
     });
   }
 
-  // 봇이 생각 중임을 먼저 알림 (3초 제한 해결 및 안정성 확보)
   await interaction.reply({
     flags: 64,
     content: "게임 모집 메시지를 생성 중입니다...",
@@ -80,14 +74,12 @@ async function execute(interaction) {
         .setStyle(ButtonStyle.Primary),
     );
 
-    // 2. 채널에 메시지 전송 (에러 핸들링 추가)
     const msg = await interaction.channel.send({
       content: "@everyone",
       embeds: [embed],
       components: [row],
     });
 
-    // 3. 해당 서버 데이터 로드 및 저장
     const guildId = interaction.guild.id;
     const guildLobby = loadGuildData(guildId);
 
@@ -103,24 +95,17 @@ async function execute(interaction) {
     };
     saveGuildData(guildId, guildLobby);
 
-    // 12시간 후 삭제 안전 버전
     setTimeout(
       async () => {
         try {
           const currentData = loadGuildData(guildId);
           if (!currentData[msg.id]) return;
-
           const channel = await interaction.client.channels
             .fetch(currentData[msg.id].channelId)
             .catch(() => null);
           if (!channel) return;
-
-          const message = await channel.messages
-            .fetch(msg.id)
-            .catch(() => null);
-          if (message) {
-            await message.delete().catch(() => null);
-          }
+          const message = await channel.messages.fetch(msg.id).catch(() => null);
+          if (message) await message.delete().catch(() => null);
           delete currentData[msg.id];
           saveGuildData(guildId, currentData);
         } catch (error) {
@@ -130,7 +115,6 @@ async function execute(interaction) {
       12 * 60 * 60 * 1000,
     );
 
-    // 응답 업데이트
     await interaction.editReply({
       content: "✅ 게임 모집이 성공적으로 생성되었습니다.",
     });
@@ -142,19 +126,51 @@ async function execute(interaction) {
   }
 }
 
-// 버튼 및 모달 통합 핸들러
 async function handlePartyInteraction(interaction) {
   const guildId = interaction.guild?.id;
   if (!guildId) return;
 
+  // ✅ customId를 맨 먼저 선언 (TDZ 방지)
+  const customId = interaction.customId;
+  if (!customId) return;
+
   const guildLobby = loadGuildData(guildId);
   const userId = interaction.user.id;
-  const customId = interaction.customId;
 
-  // 메시지 ID 추출
   const msgId = interaction.isModalSubmit()
     ? customId.split(":")[1]
     : interaction.message?.id;
+
+  // ✅ party_delete_confirm 처리 (msgId 체크 전에 처리해야 함)
+  if (customId.startsWith("party_delete_confirm:")) {
+    const targetMsgId = customId.split(":")[1];
+    try {
+      const originalChannel = await interaction.client.channels
+        .fetch(guildLobby[targetMsgId]?.channelId)
+        .catch(() => null);
+      if (originalChannel) {
+        const originalMsg = await originalChannel.messages
+          .fetch(targetMsgId)
+          .catch(() => null);
+        if (originalMsg) await originalMsg.delete().catch(() => null);
+      }
+      delete guildLobby[targetMsgId];
+      saveGuildData(guildId, guildLobby);
+      return interaction.update({
+        content: "✅ 모집이 삭제되었습니다.",
+        components: [],
+      });
+    } catch (e) {
+      console.error("모집 삭제 실패:", e);
+    }
+  }
+
+  if (customId === "party_delete_cancel") {
+    return interaction.update({
+      content: "삭제가 취소되었습니다.",
+      components: [],
+    });
+  }
 
   if (!msgId || !guildLobby[msgId]) {
     if (interaction.isButton() || interaction.isModalSubmit()) {
@@ -174,8 +190,7 @@ async function handlePartyInteraction(interaction) {
           flags: 64,
         });
       }
-      const nickname =
-        interaction.member?.displayName || interaction.user.username;
+      const nickname = interaction.member?.displayName || interaction.user.username;
       const modal = new ModalBuilder()
         .setCustomId(`party_modal:${msgId}`)
         .setTitle("게임 시작 설정");
@@ -199,6 +214,35 @@ async function handlePartyInteraction(interaction) {
         new ActionRowBuilder().addComponents(timeInput),
       );
       return interaction.showModal(modal);
+    }
+
+    if (customId === "party_delete") {
+      const isCreator = userId === guildLobby[msgId].creator;
+      const isAdmin = interaction.member.permissions.has("Administrator");
+
+      if (!isCreator && !isAdmin) {
+        return interaction.reply({
+          content: "❌ 모집자 또는 관리자만 삭제할 수 있습니다.",
+          flags: 64,
+        });
+      }
+
+      return interaction.reply({
+        content: "정말 모집을 삭제하시겠습니까?",
+        flags: 64,
+        components: [
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`party_delete_confirm:${msgId}`)
+              .setLabel("확인 ✅")
+              .setStyle(ButtonStyle.Danger),
+            new ButtonBuilder()
+              .setCustomId("party_delete_cancel")
+              .setLabel("취소")
+              .setStyle(ButtonStyle.Secondary),
+          ),
+        ],
+      });
     }
 
     if (customId === "party_cancel") {
@@ -300,6 +344,10 @@ async function updateEmbed(msgId, interaction, partyData) {
         .setCustomId("party_cancel")
         .setLabel("참여 취소")
         .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId("party_delete")
+        .setLabel("모집 삭제 🗑️")
+        .setStyle(ButtonStyle.Danger),
     );
 
     await msg.edit({ embeds: [embed], components: [row1, row2] });
@@ -309,29 +357,5 @@ async function updateEmbed(msgId, interaction, partyData) {
     console.error("Embed 업데이트 실패:", e);
   }
 }
-
-// 아래는 index.js용 명령어 초기화 주석 코드입니다. (보존)
-/*
-client.once("ready", async () => {
-  console.log(`✅ 로그인됨: ${client.user.tag}`);
-
-  try {
-    // 1. 글로벌 명령어 전체 삭제
-    await client.application.commands.set([]);
-    console.log("🗑️ 글로벌 명령어 전체 삭제 완료");
-
-    // 2. 모든 서버(길드)의 명령어 전체 삭제
-    const guilds = await client.guilds.fetch();
-    for (const [guildId, guild] of guilds) {
-      await client.application.commands.set([], guildId);
-      console.log(`🗑️ [${guild.name}] 서버 명령어 삭제 완료`);
-    }
-
-    console.log("✨ 모든 명령어가 초기화되었습니다. 이제 이 코드를 지우고 다시 동기화하세요.");
-  } catch (error) {
-    console.error("❌ 명령어 삭제 중 에러 발생:", error);
-  }
-});
-*/
 
 module.exports = { data, execute, handlePartyInteraction };
