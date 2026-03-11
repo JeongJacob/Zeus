@@ -28,7 +28,6 @@ client.once("ready", async () => {
   console.log(`✅ 로그인됨: ${client.user.tag}`);
 
   // 슬래시 명령어 동기화 (필요할 때만 주석 해제하여 사용하세요)
-  /*
   try {
     const commandData = commands.map((cmd) => cmd.data.toJSON());
     await client.application.commands.set(commandData);
@@ -36,7 +35,6 @@ client.once("ready", async () => {
   } catch (error) {
     console.error("❌ 명령어 동기화 실패:", error);
   }
-  */
 });
 
 // ⭐ 통합 인터랙션 리스너
