@@ -12,29 +12,31 @@ const {
 const fs = require("fs");
 const path = require("path");
 
-// --- JSON 데이터 관리 로직 ---
-const dataPath = path.join(__dirname, "../data/party.json");
+// --- 서버별 데이터 관리 설정 ---
+const DATA_DIR = path.join(__dirname, "../data/party.json");
 
-// 데이터 로드: 파일이나 폴더가 없으면 생성하고 읽어옵니다.
-function loadLobby() {
+// 서버별 데이터 로드 함수
+function loadGuildData(guildId) {
   try {
-    const dirPath = path.dirname(dataPath);
-    if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
-    if (!fs.existsSync(dataPath))
-      fs.writeFileSync(dataPath, JSON.stringify({}));
-    return JSON.parse(fs.readFileSync(dataPath, "utf-8"));
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    const filePath = path.join(DATA_DIR, `${guildId}.json`);
+
+    if (!fs.existsSync(filePath) || fs.statSync(filePath).size === 0) return {};
+    const content = fs.readFileSync(filePath, "utf-8").trim();
+    return content ? JSON.parse(content) : {};
   } catch (err) {
-    console.error("데이터 로드 실패:", err);
+    console.error(`[${guildId}] 데이터 로드 실패 (초기화):`, err.message);
     return {};
   }
 }
 
-// 데이터 저장: 데이터 변경 시마다 호출하여 파일에 기록합니다.
-function saveLobby(data) {
+// 서버별 데이터 저장 함수
+function saveGuildData(guildId, data) {
   try {
-    fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
+    const filePath = path.join(DATA_DIR, `${guildId}.json`);
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
   } catch (err) {
-    console.error("데이터 저장 실패:", err);
+    console.error(`[${guildId}] 데이터 저장 실패:`, err.message);
   }
 }
 
@@ -46,18 +48,15 @@ const positions = {
   서폿: "✨",
 };
 
-// 봇 시작 시 메모리에 데이터 로드
-let lobby = loadLobby();
-
 const data = new SlashCommandBuilder()
   .setName("자랭")
   .setDescription("게임 모집을 시작합니다.");
 
 async function execute(interaction) {
   // 1. 채널 확인 및 즉시 응답 (봇이 터지는 것을 방지)
-  if (!interaction.channel) {
+  if (!interaction.guild) {
     return interaction.reply({
-      content: "명령어를 실행할 채널을 찾을 수 없습니다.",
+      content: "서버에서만 명령어를 실행할 수 있습니다.",
       flags: 64,
     });
   }
@@ -88,8 +87,11 @@ async function execute(interaction) {
       components: [row],
     });
 
-    // 3. 데이터 저장
-    lobby[msg.id] = {
+    // 3. 해당 서버 데이터 로드 및 저장
+    const guildId = interaction.guild.id;
+    const guildLobby = loadGuildData(guildId);
+
+    guildLobby[msg.id] = {
       creator: interaction.user.id,
       creatorName: null,
       players: {},
@@ -99,15 +101,17 @@ async function execute(interaction) {
       startTime: null,
       channelId: interaction.channel.id,
     };
-    saveLobby(lobby); // 파일에 기록
+    saveGuildData(guildId, guildLobby);
 
     // 12시간 후 삭제 안전 버전
     setTimeout(
       async () => {
         try {
-          if (!lobby[msg.id]) return;
+          const currentData = loadGuildData(guildId);
+          if (!currentData[msg.id]) return;
+
           const channel = await interaction.client.channels
-            .fetch(lobby[msg.id].channelId)
+            .fetch(currentData[msg.id].channelId)
             .catch(() => null);
           if (!channel) return;
 
@@ -117,15 +121,15 @@ async function execute(interaction) {
           if (message) {
             await message.delete().catch(() => null);
           }
-          delete lobby[msg.id];
-          saveLobby(lobby); // 삭제 후 파일 갱신
+          delete currentData[msg.id];
+          saveGuildData(guildId, currentData);
         } catch (error) {
-          // 절대 봇이 죽지 않게 로그만 남김
           console.log("자동 삭제 중 경미한 에러 발생 (봇 유지됨)");
         }
       },
       12 * 60 * 60 * 1000,
     );
+
     // 응답 업데이트
     await interaction.editReply({
       content: "✅ 게임 모집이 성공적으로 생성되었습니다.",
@@ -140,6 +144,10 @@ async function execute(interaction) {
 
 // 버튼 및 모달 통합 핸들러
 async function handlePartyInteraction(interaction) {
+  const guildId = interaction.guild?.id;
+  if (!guildId) return;
+
+  const guildLobby = loadGuildData(guildId);
   const userId = interaction.user.id;
   const customId = interaction.customId;
 
@@ -148,8 +156,7 @@ async function handlePartyInteraction(interaction) {
     ? customId.split(":")[1]
     : interaction.message?.id;
 
-  if (!msgId || !lobby[msgId]) {
-    // 봇 재시작 등으로 데이터가 없을 경우 대응
+  if (!msgId || !guildLobby[msgId]) {
     if (interaction.isButton() || interaction.isModalSubmit()) {
       return interaction.reply({
         content: "❌ 만료된 모집이거나 데이터를 찾을 수 없습니다.",
@@ -161,7 +168,7 @@ async function handlePartyInteraction(interaction) {
 
   if (interaction.isButton()) {
     if (customId === "party_set_start_time") {
-      if (userId !== lobby[msgId].creator) {
+      if (userId !== guildLobby[msgId].creator) {
         return interaction.reply({
           content: "당신은 이 모집을 생성한 사용자가 아닙니다.",
           flags: 64,
@@ -195,58 +202,60 @@ async function handlePartyInteraction(interaction) {
     }
 
     if (customId === "party_cancel") {
-      removePlayer(msgId, userId);
+      removePlayer(guildLobby[msgId], userId);
     } else if (customId === "party_substitute") {
-      removePlayer(msgId, userId);
-      if (!lobby[msgId].substitutes.includes(userId))
-        lobby[msgId].substitutes.push(userId);
+      removePlayer(guildLobby[msgId], userId);
+      if (!guildLobby[msgId].substitutes.includes(userId))
+        guildLobby[msgId].substitutes.push(userId);
     } else if (customId === "party_any") {
-      removePlayer(msgId, userId);
-      if (!lobby[msgId].any.includes(userId)) lobby[msgId].any.push(userId);
+      removePlayer(guildLobby[msgId], userId);
+      if (!guildLobby[msgId].any.includes(userId))
+        guildLobby[msgId].any.push(userId);
     } else if (positions[customId]) {
-      if (lobby[msgId].players[customId]) {
+      if (guildLobby[msgId].players[customId]) {
         return interaction.reply({
           content: "이미 선택된 포지션입니다.",
           flags: 64,
         });
       }
-      removePlayer(msgId, userId);
-      lobby[msgId].players[customId] = userId;
+      removePlayer(guildLobby[msgId], userId);
+      guildLobby[msgId].players[customId] = userId;
     }
-    saveLobby(lobby); // 변경사항 파일 저장
-    await updateEmbed(msgId, interaction);
+
+    saveGuildData(guildId, guildLobby);
+    await updateEmbed(msgId, interaction, guildLobby[msgId]);
   }
 
-  if (interaction.type === InteractionType.ModalSubmit) {
-    if (customId.startsWith("party_modal:")) {
-      lobby[msgId].creatorName =
-        interaction.fields.getTextInputValue("creator_name_input");
-      lobby[msgId].startTime =
-        interaction.fields.getTextInputValue("start_time_input");
-      saveLobby(lobby); // 변경사항 파일 저장
-      await updateEmbed(msgId, interaction);
-    }
+  if (
+    interaction.type === InteractionType.ModalSubmit &&
+    customId.startsWith("party_modal:")
+  ) {
+    guildLobby[msgId].creatorName =
+      interaction.fields.getTextInputValue("creator_name_input");
+    guildLobby[msgId].startTime =
+      interaction.fields.getTextInputValue("start_time_input");
+    saveGuildData(guildId, guildLobby);
+    await updateEmbed(msgId, interaction, guildLobby[msgId]);
   }
 }
 
-function removePlayer(msgId, userId) {
-  if (!lobby[msgId]) return;
-  for (const role in lobby[msgId].players) {
-    if (lobby[msgId].players[role] === userId) {
-      delete lobby[msgId].players[role];
+function removePlayer(partyData, userId) {
+  if (!partyData) return;
+  for (const role in partyData.players) {
+    if (partyData.players[role] === userId) {
+      delete partyData.players[role];
       break;
     }
   }
-  lobby[msgId].substitutes = lobby[msgId].substitutes.filter(
-    (uid) => uid !== userId,
-  );
-  lobby[msgId].any = lobby[msgId].any.filter((uid) => uid !== userId);
+  partyData.substitutes = partyData.substitutes.filter((uid) => uid !== userId);
+  partyData.any = partyData.any.filter((uid) => uid !== userId);
 }
 
-async function updateEmbed(msgId, interaction) {
+async function updateEmbed(msgId, interaction, partyData) {
   try {
-    const msg = await interaction.channel.messages.fetch(msgId);
-    const { startTime, players, substitutes, creatorName, any } = lobby[msgId];
+    const msg =
+      interaction.message || (await interaction.channel.messages.fetch(msgId));
+    const { startTime, players, substitutes, creatorName, any } = partyData;
 
     const positionText = Object.keys(positions)
       .map((role) => {

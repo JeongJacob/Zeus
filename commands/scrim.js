@@ -12,38 +12,45 @@ const {
 const fs = require("fs");
 const path = require("path");
 
-// --- JSON 데이터 관리 로직 ---
-const dataPath = path.join(__dirname, "../data/scrim.json");
+// --- 서버별 데이터 관리 설정 ---
+const DATA_DIR = path.join(__dirname, "../data/scrim.json");
 
-function loadScrimLobby() {
+// 서버별 데이터 로드 함수
+function loadScrimData(guildId) {
   try {
-    const dirPath = path.dirname(dataPath);
-    if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
-    if (!fs.existsSync(dataPath))
-      fs.writeFileSync(dataPath, JSON.stringify({}));
-    return JSON.parse(fs.readFileSync(dataPath, "utf-8"));
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    const filePath = path.join(DATA_DIR, `${guildId}.json`);
+
+    if (!fs.existsSync(filePath) || fs.statSync(filePath).size === 0) return {};
+    const content = fs.readFileSync(filePath, "utf-8").trim();
+    return content ? JSON.parse(content) : {};
   } catch (err) {
-    console.error("내전 데이터 로드 실패:", err);
+    console.error(`[${guildId}] 내전 데이터 로드 실패:`, err.message);
     return {};
   }
 }
 
-function saveScrimLobby(data) {
+// 서버별 데이터 저장 함수
+function saveScrimData(guildId, data) {
   try {
-    fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
+    const filePath = path.join(DATA_DIR, `${guildId}.json`);
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
   } catch (err) {
-    console.error("내전 데이터 저장 실패:", err);
+    console.error(`[${guildId}] 내전 데이터 저장 실패:`, err.message);
   }
 }
-
-// 봇 실행 시 데이터 불러오기
-let scrimLobby = loadScrimLobby();
 
 const data = new SlashCommandBuilder()
   .setName("내전")
   .setDescription("내전을 모집합니다.");
 
 async function execute(interaction) {
+  if (!interaction.guild)
+    return interaction.reply({
+      content: "서버에서만 사용 가능합니다.",
+      flags: 64,
+    });
+
   const embed = new EmbedBuilder()
     .setTitle("내전 모집")
     .setDescription("게임 시작 시간을 설정하세요.")
@@ -62,16 +69,19 @@ async function execute(interaction) {
     components: [actionRow],
   });
 
-  scrimLobby[msg.id] = {
+  const guildId = interaction.guild.id;
+  const guildLobby = loadScrimData(guildId);
+
+  guildLobby[msg.id] = {
     participants: [],
     substitutes: [],
     creator: interaction.user.id,
     messageId: msg.id,
     startTime: null,
     isClosed: false,
-    channelId: interaction.channel.id, // 삭제 로직용 채널 ID 추가
+    channelId: interaction.channel.id,
   };
-  saveScrimLobby(scrimLobby);
+  saveScrimData(guildId, guildLobby);
 
   await interaction.reply({
     flags: 64,
@@ -80,13 +90,17 @@ async function execute(interaction) {
 }
 
 async function handleScrimInteraction(interaction) {
+  const guildId = interaction.guild?.id;
+  if (!guildId) return;
+
+  const guildLobby = loadScrimData(guildId);
   const userId = interaction.user.id;
   const customId = interaction.customId;
   const msgId = interaction.isModalSubmit()
     ? customId.split(":")[1]
     : interaction.message.id;
 
-  if (!scrimLobby[msgId]) {
+  if (!msgId || !guildLobby[msgId]) {
     if (interaction.isButton() || interaction.isModalSubmit()) {
       return interaction.reply({
         content: "❌ 만료된 내전 데이터입니다.",
@@ -97,7 +111,7 @@ async function handleScrimInteraction(interaction) {
   }
 
   if (customId === "scrim_set_start_time") {
-    if (userId !== scrimLobby[msgId].creator) {
+    if (userId !== guildLobby[msgId].creator) {
       return interaction.reply({
         content: "❌ 당신은 이 모집을 생성한 사용자가 아닙니다.",
         flags: 64,
@@ -120,65 +134,56 @@ async function handleScrimInteraction(interaction) {
     interaction.type === InteractionType.ModalSubmit &&
     customId.startsWith("scrim_modal:")
   ) {
-    scrimLobby[msgId].startTime =
+    guildLobby[msgId].startTime =
       interaction.fields.getTextInputValue("start_time_input");
-    saveScrimLobby(scrimLobby);
-    await updateScrimEmbed(msgId, interaction);
+    saveScrimData(guildId, guildLobby);
+    await updateScrimEmbed(msgId, interaction, guildLobby[msgId]);
   }
 
   if (["join_scrim", "substitute_scrim", "cancel_scrim"].includes(customId)) {
+    const lobby = guildLobby[msgId];
     if (customId === "join_scrim") {
-      if (scrimLobby[msgId].participants.includes(userId))
+      if (lobby.participants.includes(userId))
         return interaction.reply({ content: "이미 참가 중입니다.", flags: 64 });
-      if (scrimLobby[msgId].participants.length >= 10)
+      if (lobby.participants.length >= 10)
         return interaction.reply({
           content: "참가 인원이 가득 찼습니다.",
           flags: 64,
         });
-
-      scrimLobby[msgId].participants.push(userId);
-      scrimLobby[msgId].substitutes = scrimLobby[msgId].substitutes.filter(
-        (id) => id !== userId,
-      );
+      lobby.participants.push(userId);
+      lobby.substitutes = lobby.substitutes.filter((id) => id !== userId);
     } else if (customId === "substitute_scrim") {
-      if (!scrimLobby[msgId].substitutes.includes(userId))
-        scrimLobby[msgId].substitutes.push(userId);
-      scrimLobby[msgId].participants = scrimLobby[msgId].participants.filter(
-        (id) => id !== userId,
-      );
+      if (!lobby.substitutes.includes(userId)) lobby.substitutes.push(userId);
+      lobby.participants = lobby.participants.filter((id) => id !== userId);
     } else if (customId === "cancel_scrim") {
-      scrimLobby[msgId].participants = scrimLobby[msgId].participants.filter(
-        (id) => id !== userId,
-      );
-      scrimLobby[msgId].substitutes = scrimLobby[msgId].substitutes.filter(
-        (id) => id !== userId,
-      );
+      lobby.participants = lobby.participants.filter((id) => id !== userId);
+      lobby.substitutes = lobby.substitutes.filter((id) => id !== userId);
     }
 
-    saveScrimLobby(scrimLobby);
-    await updateScrimEmbed(msgId, interaction);
+    saveScrimData(guildId, guildLobby);
+    await updateScrimEmbed(msgId, interaction, lobby);
   }
 }
 
-async function updateScrimEmbed(msgId, interaction) {
+async function updateScrimEmbed(msgId, interaction, lobbyData) {
   try {
-    const msg = await interaction.channel.messages.fetch(msgId);
-    const lobby = scrimLobby[msgId];
-
-    const isFull = lobby.participants.length >= 10;
+    const msg =
+      interaction.message || (await interaction.channel.messages.fetch(msgId));
+    const isFull = lobbyData.participants.length >= 10;
 
     const embed = new EmbedBuilder()
       .setTitle(isFull ? "🔥 내전 모집 (정원 완료)" : "⚔️ 내전 모집")
       .setDescription(
-        `**게임 시작 시간:** ⏳ ${lobby.startTime || "미정"}\n\n` +
-          `**참가자 (${lobby.participants.length}/10):**\n` +
-          (lobby.participants.map((id) => `<@${id}>`).join("\n") || "없음") +
+        `**게임 시작 시간:** ⏳ ${lobbyData.startTime || "미정"}\n\n` +
+          `**참가자 (${lobbyData.participants.length}/10):**\n` +
+          (lobbyData.participants.map((id) => `<@${id}>`).join("\n") ||
+            "없음") +
           `\n\n**예비 참가자:**\n` +
-          (lobby.substitutes.map((id) => `<@${id}>`).join("\n") || "없음"),
+          (lobbyData.substitutes.map((id) => `<@${id}>`).join("\n") || "없음"),
       )
       .setColor(isFull ? 0xe74c3c : 0x3498db);
 
-    // 버튼 상태 업데이트: 풀방이면 참가 버튼 비활성화
+    // 버튼: 풀방이면 참가 버튼 비활성화, 시간이 정해지면 항상 표시
     const joinRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("join_scrim")
@@ -199,8 +204,32 @@ async function updateScrimEmbed(msgId, interaction) {
     if (!interaction.deferred && !interaction.replied)
       await interaction.deferUpdate();
   } catch (e) {
-    console.error("내전 Embed 업데이트 실패:", e);
+    console.error("내전 임베드 업데이트 실패:", e);
   }
 }
+
+// 아래는 index.js용 명령어 초기화 주석 코드입니다. (보존)
+/*
+client.once("ready", async () => {
+  console.log(`✅ 로그인됨: ${client.user.tag}`);
+
+  try {
+    // 1. 글로벌 명령어 전체 삭제
+    await client.application.commands.set([]);
+    console.log("🗑️ 글로벌 명령어 전체 삭제 완료");
+
+    // 2. 모든 서버(길드)의 명령어 전체 삭제
+    const guilds = await client.guilds.fetch();
+    for (const [guildId, guild] of guilds) {
+      await client.application.commands.set([], guildId);
+      console.log(`🗑️ [${guild.name}] 서버 명령어 삭제 완료`);
+    }
+
+    console.log("✨ 모든 명령어가 초기화되었습니다. 이제 이 코드를 지우고 다시 동기화하세요.");
+  } catch (error) {
+    console.error("❌ 명령어 삭제 중 에러 발생:", error);
+  }
+});
+*/
 
 module.exports = { data, execute, handleScrimInteraction };
