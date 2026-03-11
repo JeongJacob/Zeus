@@ -4,6 +4,8 @@ require("dotenv").config();
 // 1. 명령어 파일 로드 (경로가 맞는지 꼭 확인하세요!)
 const party = require("./commands/party");
 const scrim = require("./commands/scrim");
+const clear = require("./commands/clear");
+const help = require("./commands/help");
 
 const client = new Client({
   intents: [
@@ -16,7 +18,7 @@ const client = new Client({
 client.commands = new Collection();
 
 // 2. 명령어 배열 구성
-const commands = [party, scrim];
+const commands = [party, scrim, clear, help];
 
 // 컬렉션에 등록
 commands.forEach((cmd) => {
