@@ -42,19 +42,19 @@ client.once("ready", async () => {
     console.log("✅ 글로벌 명령어 동기화 요청 완료");
 
     // 각 서버(길드)마다 즉시 동기화 (이게 떠야 채팅창에 바로 나옵니다)
-    const guilds = await client.guilds.fetch();
-    for (const [guildId, guild] of guilds) {
-      try {
-        await client.application.commands.set(commandData, guildId);
-        console.log(
-          `✅ [${guild.name || guildId}] 서버 명령어 즉시 동기화 완료`,
-        );
-      } catch (err) {
-        console.error(`❌ [${guildId}] 서버 동기화 실패:`, err.message);
-      }
-    }
+    //     const guilds = await client.guilds.fetch();
+    //     for (const [guildId, guild] of guilds) {
+    //       try {
+    //         await client.application.commands.set(commandData, guildId);
+    //         console.log(
+    //           `✅ [${guild.name || guildId}] 서버 명령어 즉시 동기화 완료`,
+    //         );
+    //       } catch (err) {
+    //         console.error(`❌ [${guildId}] 서버 동기화 실패:`, err.message);
+    //       }
+    //     }
   } catch (error) {
-    console.error("❌ 전체 명령어 동기화 중 에러 발생:", error);
+        console.error("❌ 전체 명령어 동기화 중 에러 발생:", error);
   }
 });
 
