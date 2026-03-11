@@ -7,10 +7,10 @@ module.exports = {
   async execute(interaction) {
     return interaction.reply(
       "**🤖 사용 가능한 명령어 안내:**\n\n" +
-        "`/id <Riot ID>`\n" +
+        "`/id <Riot ID> (수정 중)`\n" +
         "➤ 해당 라이엇 계정의 PUUID를 조회합니다.\n" +
         "예시: `/id riotid: Radiohead#KR97`\n\n" +
-        "`/전적 <puuid>`\n" +
+        "`/전적 <puuid> (수정 중)`\n" +
         "➤ 최근 한 판의 전체 게임 정보를 조회합니다.\n" +
         "예시: `/전적 puuid: abc1234...`\n\n" +
         "`/자랭`\n" +
