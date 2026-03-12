@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zeus — 롤 파티 모집 디스코드 봇</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700;900&family=Noto+Sans+KR:wght@300;400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #080808;
+        --surface: #111;
+        --border: #1e1e1e;
+        --text: #e0e0e0;
+        --muted: #666;
+        --accent: #ffffff;
+        --gold: #c9a84c;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Noto Sans KR", sans-serif;
+        font-weight: 300;
+        line-height: 1.8;
+        overflow-x: hidden;
+      }
+
+      /* 노이즈 텍스처 */
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+        pointer-events: none;
+        z-index: 9999;
+      }
+
+      /* ── NAV ── */
+      nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.2rem 3rem;
+        border-bottom: 1px solid var(--border);
+        background: rgba(8, 8, 8, 0.85);
+        backdrop-filter: blur(12px);
+      }
+
+      .nav-logo {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        font-family: "Noto Serif KR", serif;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--accent);
+        text-decoration: none;
+        letter-spacing: 0.04em;
+      }
+
+      .nav-logo img {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 2rem;
+        list-style: none;
+      }
+
+      .nav-links a {
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 0.82rem;
+        letter-spacing: 0.06em;
+        transition: color 0.2s;
+      }
+
+      .nav-links a:hover {
+        color: var(--accent);
+      }
+
+      .nav-invite {
+        background: var(--accent);
+        color: #000 !important;
+        padding: 0.45rem 1.1rem;
+        border-radius: 2px;
+        font-weight: 500 !important;
+        letter-spacing: 0.04em !important;
+        transition: opacity 0.2s !important;
+      }
+
+      .nav-invite:hover {
+        opacity: 0.85;
+        color: #000 !important;
+      }
+
+      /* ── HERO ── */
+      .hero {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 8rem 2rem 4rem;
+        position: relative;
+      }
+
+      .hero::before {
+        content: "";
+        position: absolute;
+        top: 20%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(
+          circle,
+          rgba(255, 255, 255, 0.03) 0%,
+          transparent 70%
+        );
+        pointer-events: none;
+      }
+
+      .hero-logo {
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-bottom: 2.5rem;
+        opacity: 0;
+        animation: fadeUp 0.8s ease 0.2s forwards;
+        box-shadow: 0 0 60px rgba(255, 255, 255, 0.06);
+      }
+
+      .hero-badge {
+        display: inline-block;
+        font-size: 0.72rem;
+        letter-spacing: 0.14em;
+        color: var(--gold);
+        border: 1px solid rgba(201, 168, 76, 0.3);
+        padding: 0.3rem 0.9rem;
+        border-radius: 999px;
+        margin-bottom: 1.5rem;
+        opacity: 0;
+        animation: fadeUp 0.8s ease 0.3s forwards;
+      }
+
+      .hero h1 {
+        font-family: "Noto Serif KR", serif;
+        font-size: clamp(2.8rem, 7vw, 5rem);
+        font-weight: 900;
+        color: var(--accent);
+        line-height: 1.15;
+        letter-spacing: -0.01em;
+        opacity: 0;
+        animation: fadeUp 0.8s ease 0.4s forwards;
+      }
+
+      .hero-sub {
+        font-size: clamp(0.95rem, 2vw, 1.1rem);
+        color: var(--muted);
+        margin-top: 1.2rem;
+        max-width: 480px;
+        opacity: 0;
+        animation: fadeUp 0.8s ease 0.5s forwards;
+      }
+
+      .hero-buttons {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2.8rem;
+        flex-wrap: wrap;
+        justify-content: center;
+        opacity: 0;
+        animation: fadeUp 0.8s ease 0.6s forwards;
+      }
+
+      .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: var(--accent);
+        color: #000;
+        text-decoration: none;
+        padding: 0.85rem 2rem;
+        border-radius: 2px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        transition:
+          opacity 0.2s,
+          transform 0.2s;
+      }
+
+      .btn-primary:hover {
+        opacity: 0.88;
+        transform: translateY(-2px);
+      }
+
+      .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: transparent;
+        color: var(--muted);
+        text-decoration: none;
+        padding: 0.85rem 2rem;
+        border-radius: 2px;
+        border: 1px solid var(--border);
+        font-size: 0.9rem;
+        letter-spacing: 0.04em;
+        transition:
+          color 0.2s,
+          border-color 0.2s,
+          transform 0.2s;
+      }
+
+      .btn-secondary:hover {
+        color: var(--accent);
+        border-color: #444;
+        transform: translateY(-2px);
+      }
+
+      .hero-scroll {
+        position: absolute;
+        bottom: 2.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.4rem;
+        color: var(--muted);
+        font-size: 0.72rem;
+        letter-spacing: 0.1em;
+        opacity: 0;
+        animation: fadeUp 0.8s ease 1s forwards;
+      }
+
+      .scroll-line {
+        width: 1px;
+        height: 40px;
+        background: linear-gradient(to bottom, var(--muted), transparent);
+        animation: scrollPulse 2s ease-in-out infinite;
+      }
+
+      @keyframes scrollPulse {
+        0%,
+        100% {
+          opacity: 0.4;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+
+      /* ── SECTION 공통 ── */
+      section {
+        padding: 7rem 2rem;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+
+      .section-label {
+        font-size: 0.72rem;
+        letter-spacing: 0.14em;
+        color: var(--gold);
+        margin-bottom: 0.8rem;
+      }
+
+      .section-title {
+        font-family: "Noto Serif KR", serif;
+        font-size: clamp(1.6rem, 4vw, 2.4rem);
+        font-weight: 700;
+        color: var(--accent);
+        margin-bottom: 1rem;
+      }
+
+      .section-desc {
+        font-size: 0.95rem;
+        color: var(--muted);
+        max-width: 500px;
+        margin-bottom: 3.5rem;
+      }
+
+      hr.divider {
+        border: none;
+        border-top: 1px solid var(--border);
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+
+      /* ── FEATURES ── */
+      .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5px;
+        background: var(--border);
+        border: 1px solid var(--border);
+      }
+
+      .feature-card {
+        background: var(--bg);
+        padding: 2.5rem;
+        transition: background 0.3s;
+      }
+
+      .feature-card:hover {
+        background: #0f0f0f;
+      }
+
+      .feature-icon {
+        font-size: 1.8rem;
+        margin-bottom: 1.2rem;
+        display: block;
+      }
+
+      .feature-card h3 {
+        font-family: "Noto Serif KR", serif;
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--accent);
+        margin-bottom: 0.6rem;
+      }
+
+      .feature-card p {
+        font-size: 0.88rem;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      /* ── COMMANDS ── */
+      .commands-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        background: var(--border);
+        border: 1px solid var(--border);
+      }
+
+      .command-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 2rem;
+        background: var(--bg);
+        padding: 1.6rem 2rem;
+        transition: background 0.2s;
+      }
+
+      .command-row:hover {
+        background: #0d0d0d;
+      }
+
+      .command-tag {
+        font-family: "Courier New", monospace;
+        font-size: 0.88rem;
+        color: var(--accent);
+        background: #161616;
+        border: 1px solid var(--border);
+        padding: 0.25rem 0.7rem;
+        border-radius: 2px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        min-width: 90px;
+        text-align: center;
+      }
+
+      .command-desc {
+        font-size: 0.88rem;
+        color: var(--muted);
+        padding-top: 0.2rem;
+      }
+
+      /* ── CTA ── */
+      .cta-section {
+        text-align: center;
+        padding: 8rem 2rem;
+        position: relative;
+      }
+
+      .cta-section::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 500px;
+        height: 300px;
+        background: radial-gradient(
+          ellipse,
+          rgba(255, 255, 255, 0.025) 0%,
+          transparent 70%
+        );
+        pointer-events: none;
+      }
+
+      .cta-section h2 {
+        font-family: "Noto Serif KR", serif;
+        font-size: clamp(1.8rem, 4vw, 2.8rem);
+        font-weight: 700;
+        color: var(--accent);
+        margin-bottom: 1rem;
+      }
+
+      .cta-section p {
+        color: var(--muted);
+        font-size: 0.95rem;
+        margin-bottom: 2.5rem;
+      }
+
+      /* ── FOOTER ── */
+      footer {
+        border-top: 1px solid var(--border);
+        padding: 2.5rem 3rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+
+      .footer-left {
+        font-size: 0.8rem;
+        color: var(--muted);
+        letter-spacing: 0.04em;
+      }
+
+      .footer-links {
+        display: flex;
+        gap: 1.5rem;
+        list-style: none;
+      }
+
+      .footer-links a {
+        font-size: 0.8rem;
+        color: var(--muted);
+        text-decoration: none;
+        letter-spacing: 0.04em;
+        transition: color 0.2s;
+      }
+
+      .footer-links a:hover {
+        color: var(--accent);
+      }
+
+      /* ── ANIMATIONS ── */
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(24px);
+        transition:
+          opacity 0.7s ease,
+          transform 0.7s ease;
+      }
+
+      .reveal.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* ── RESPONSIVE ── */
+      @media (max-width: 640px) {
+        nav {
+          padding: 1rem 1.5rem;
+        }
+        .nav-links {
+          display: none;
+        }
+        footer {
+          flex-direction: column;
+          text-align: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- NAV -->
+    <nav>
+      <a href="#" class="nav-logo">
+        <img
+          src="logo.png"
+          alt="Zeus 로고"
+          onerror="this.style.display = 'none'"
+        />
+        Zeus
+      </a>
+      <ul class="nav-links">
+        <li><a href="#features">기능</a></li>
+        <li><a href="#commands">명령어</a></li>
+        <li>
+          <a href="https://discord.gg/zfKDumpxX2" target="_blank">DISCORD</a>
+        </li>
+        <li><a href="#terms">약관</a></li>
+        <li>
+          <a
+            href="https://discord.com/oauth2/authorize?client_id=1357320241302212650"
+            target="_blank"
+            class="nav-invite"
+            >초대하기</a
+          >
+        </li>
+      </ul>
+    </nav>
+
+    <!-- HERO -->
+    <div class="hero">
+      <img
+        src="logo.png"
+        alt="Zeus"
+        class="hero-logo"
+        onerror="this.style.display = 'none'"
+      />
+      <span class="hero-badge">DISCORD BOT · 테스트 운영 중</span>
+      <h1>롤 파티 모집,<br />이걸로 끝냅니다.</h1>
+      <p class="hero-sub">
+        카톡방 여러 개 그만 만드세요. 디스코드 채널 하나로 자랭, 내전, 칼바람,
+        롤체 파티 모집을 전부 처리할 수 있어요.
+      </p>
+      <div class="hero-buttons">
+        <a
+          href="https://discord.com/oauth2/authorize?client_id=1357320241302212650"
+          target="_blank"
+          class="btn-primary"
+        >
+          ⚡ 서버에 초대하기
+        </a>
+        <a href="#features" class="btn-secondary"> 기능 살펴보기 ↓ </a>
+      </div>
+      <div class="hero-scroll">
+        <div class="scroll-line"></div>
+        SCROLL
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- FEATURES -->
+    <section id="features">
+      <div class="reveal">
+        <div class="section-label">FEATURES</div>
+        <h2 class="section-title">모집의 모든 것을<br />한 채널에서</h2>
+        <p class="section-desc">
+          복잡한 설정 없이 명령어 하나로 모집글이 생성되고, 버튼으로 모든 걸
+          처리해요.
+        </p>
+      </div>
+      <div class="features-grid reveal">
+        <div class="feature-card">
+          <span class="feature-icon">🏹</span>
+          <h3>4가지 모드 지원</h3>
+          <p>
+            자유랭크, 내전, 칼바람 나락, 롤체(TFT)까지 게임 유형별 모집을 모두
+            지원해요.
+          </p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">🎮</span>
+          <h3>버튼으로 간편 참가</h3>
+          <p>
+            채팅 입력 없이 버튼 클릭 하나로 참가 신청, 예비 등록, 취소까지
+            가능해요.
+          </p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">⏰</span>
+          <h3>시작 시간 설정</h3>
+          <p>
+            모집자가 직접 게임 시작 시간을 입력해 모집글에 표시할 수 있어요.
+          </p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">🗑️</span>
+          <h3>12시간 자동 삭제</h3>
+          <p>
+            모집글이 12시간 후 자동으로 삭제되어 채널이 항상 깔끔하게 유지돼요.
+          </p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">🛡️</span>
+          <h3>포지션 선택</h3>
+          <p>
+            자랭 모집 시 탑, 정글, 미드, 원딜, 서폿 포지션을 개별 선택할 수
+            있어요.
+          </p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">👥</span>
+          <h3>인원 자동 관리</h3>
+          <p>
+            참가자 현황이 실시간으로 임베드에 반영되고, 이미 찬 슬롯은 자동으로
+            비활성화돼요.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- COMMANDS -->
+    <section id="commands">
+      <div class="reveal">
+        <div class="section-label">COMMANDS</div>
+        <h2 class="section-title">명령어 목록</h2>
+        <p class="section-desc">
+          슬래시(/) 명령어로 간단하게 사용할 수 있어요.
+        </p>
+      </div>
+      <div class="commands-list reveal">
+        <div class="command-row">
+          <span class="command-tag">/자랭</span>
+          <span class="command-desc"
+            >자유랭크 파티 모집을 시작합니다. 포지션 선택 및 시작 시간 입력이
+            가능해요.</span
+          >
+        </div>
+        <div class="command-row">
+          <span class="command-tag">/내전</span>
+          <span class="command-desc"
+            >10인 내전 모집을 시작합니다. 시작 시간 입력이 가능해요.</span
+          >
+        </div>
+        <div class="command-row">
+          <span class="command-tag">/칼바람</span>
+          <span class="command-desc"
+            >칼바람 나락 파티 모집을 시작합니다. 5인 슬롯으로 구성되어
+            있어요.</span
+          >
+        </div>
+        <div class="command-row">
+          <span class="command-tag">/롤체</span>
+          <span class="command-desc"
+            >팀파이트 택틱스(롤체) 파티 모집을 시작합니다. 8인 슬롯으로 구성되어
+            있어요.</span
+          >
+        </div>
+        <div class="command-row">
+          <span class="command-tag">/지우개</span>
+          <span class="command-desc"
+            >채널의 메시지를 삭제합니다. 1~100개 범위에서 개수를 지정할 수
+            있어요.</span
+          >
+        </div>
+        <div class="command-row">
+          <span class="command-tag">/도움말</span>
+          <span class="command-desc"
+            >사용 가능한 모든 명령어를 안내해드려요.</span
+          >
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- CTA -->
+    <div class="cta-section">
+      <div class="reveal">
+        <h2>지금 바로 시작해보세요</h2>
+        <p>무료로 서버에 초대하고 바로 사용할 수 있어요.</p>
+        <div
+          style="
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+          "
+        >
+          <a
+            href="https://discord.com/oauth2/authorize?client_id=1357320241302212650"
+            target="_blank"
+            class="btn-primary"
+          >
+            ⚡ 서버에 초대하기
+          </a>
+          <a
+            href="https://discord.gg/zfKDumpxX2"
+            target="_blank"
+            class="btn-secondary"
+          >
+            💬 디스코드 채널 입장
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer id="terms">
+      <div class="footer-left">© 2026 Zeus · Operated by JeongJacob</div>
+      <ul class="footer-links">
+        <li>
+          <a href="https://discord.gg/zfKDumpxX2" target="_blank">DISCORD</a>
+        </li>
+        <li><a href="terms.html">이용약관</a></li>
+        <li><a href="privacy.html">개인정보처리방침</a></li>
+      </ul>
+    </footer>
+
+    <script>
+      // 스크롤 reveal
+      const reveals = document.querySelectorAll(".reveal");
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry, i) => {
+            if (entry.isIntersecting) {
+              setTimeout(() => entry.target.classList.add("visible"), i * 100);
+              observer.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.1 },
+      );
+      reveals.forEach((el) => observer.observe(el));
+    </script>
+  </body>
+</html>
