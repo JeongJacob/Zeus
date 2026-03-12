@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>이용약관 — 제우스 봇</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --surface: #141414;
+      --border: #222;
+      --text: #e8e8e8;
+      --muted: #888;
+      --accent: #fff;
+      --gold: #c9a84c;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-weight: 300;
+      line-height: 1.9;
+      min-height: 100vh;
+    }
+
+    /* 배경 노이즈 텍스처 */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 2.5rem 0;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .bolt {
+      font-size: 2rem;
+      display: block;
+      margin-bottom: 0.5rem;
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    header h1 {
+      font-family: 'Noto Serif KR', serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+    }
+
+    header p {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.4rem;
+      letter-spacing: 0.08em;
+    }
+
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      z-index: 1;
+    }
+
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      letter-spacing: 0.06em;
+      transition: color 0.2s;
+    }
+
+    nav a:hover, nav a.active {
+      color: var(--accent);
+    }
+
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 4rem 2rem 6rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .section {
+      margin-bottom: 3.5rem;
+      opacity: 0;
+      transform: translateY(16px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+
+    .section:nth-child(1) { animation-delay: 0.1s; }
+    .section:nth-child(2) { animation-delay: 0.2s; }
+    .section:nth-child(3) { animation-delay: 0.3s; }
+    .section:nth-child(4) { animation-delay: 0.4s; }
+    .section:nth-child(5) { animation-delay: 0.5s; }
+    .section:nth-child(6) { animation-delay: 0.6s; }
+    .section:nth-child(7) { animation-delay: 0.7s; }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-num {
+      font-size: 0.7rem;
+      color: var(--gold);
+      letter-spacing: 0.12em;
+      margin-bottom: 0.6rem;
+      font-weight: 500;
+    }
+
+    h2 {
+      font-family: 'Noto Serif KR', serif;
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 1rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    p {
+      font-size: 0.92rem;
+      color: #bbb;
+      margin-bottom: 0.8rem;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    ul li {
+      font-size: 0.92rem;
+      color: #bbb;
+      padding: 0.4rem 0;
+      padding-left: 1.2rem;
+      position: relative;
+    }
+
+    ul li::before {
+      content: '—';
+      position: absolute;
+      left: 0;
+      color: var(--gold);
+      font-size: 0.8rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.78rem;
+      color: var(--muted);
+      position: relative;
+      z-index: 1;
+      letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="bolt">⚡</span>
+  <h1>제우스 봇</h1>
+  <p>ZEUS BOT · DISCORD</p>
+</header>
+
+<nav>
+  <a href="terms.html" class="active">이용약관</a>
+  <a href="privacy.html">개인정보처리방침</a>
+</nav>
+
+<main>
+
+  <div class="section">
+    <div class="section-num">01</div>
+    <h2>서비스 개요</h2>
+    <p>제우스 봇(이하 "봇")은 리그 오브 레전드 및 팀파이트 택틱스 파티 모집을 지원하는 디스코드 봇입니다. 본 약관은 봇을 사용하는 모든 이용자에게 적용됩니다.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-num">02</div>
+    <h2>이용 조건</h2>
+    <p>봇을 사용하기 위해서는 다음 조건을 충족해야 합니다.</p>
+    <ul>
+      <li>디스코드 서비스 이용약관에 동의한 사용자</li>
+      <li>만 13세 이상 (디스코드 정책 기준)</li>
+      <li>봇이 초대된 서버의 구성원</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <div class="section-num">03</div>
+    <h2>금지 행위</h2>
+    <p>다음 행위는 엄격히 금지됩니다.</p>
+    <ul>
+      <li>봇을 이용한 스팸, 도배, 악성 콘텐츠 유포</li>
+      <li>타인을 사칭하거나 허위 정보를 입력하는 행위</li>
+      <li>봇의 정상적인 운영을 방해하는 일체의 행위</li>
+      <li>봇을 통해 타인에게 불쾌감을 주는 행위</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <div class="section-num">04</div>
+    <h2>서비스 변경 및 중단</h2>
+    <p>운영자는 사전 고지 없이 봇의 기능을 변경하거나 서비스를 일시 중단 또는 종료할 수 있습니다. 현재 봇은 테스트 운영 중으로, 일부 기능이 불안정할 수 있습니다.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-num">05</div>
+    <h2>면책 조항</h2>
+    <p>봇 사용으로 인해 발생하는 직접적, 간접적 손해에 대해 운영자는 책임을 지지 않습니다. 봇은 디스코드 플랫폼 위에서 운영되며, 디스코드 서비스 장애로 인한 문제는 운영자의 책임 범위 밖입니다.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-num">06</div>
+    <h2>약관 변경</h2>
+    <p>본 약관은 필요에 따라 변경될 수 있으며, 변경된 약관은 본 페이지에 게시됩니다. 지속적인 봇 사용은 변경된 약관에 동의한 것으로 간주합니다.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-num">07</div>
+    <h2>문의</h2>
+    <p>서비스 관련 문의는 디스코드 DM을 통해 운영자 <strong style="color:#fff">Jacob</strong>에게 연락하시기 바랍니다.</p>
+    <p style="color: #666; font-size: 0.82rem;">최종 수정일: 2026년 3월</p>
+  </div>
+
+</main>
+
+<footer>
+  © 2026 제우스 봇 · Operated by Jacob
+</footer>
+
+</body>
+</html>
