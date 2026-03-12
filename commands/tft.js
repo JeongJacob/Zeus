@@ -40,7 +40,7 @@ function saveGuildData(guildId, data) {
 const MAX_PLAYERS = 8;
 
 const data = new SlashCommandBuilder()
-  .setName("tft")
+  .setName("롤체")
   .setDescription("TFT(전략적 팀 전투) 파티 모집을 시작합니다.");
 
 async function execute(interaction) {
