@@ -1,11 +1,13 @@
 const { Client, GatewayIntentBits, Collection } = require("discord.js");
 require("dotenv").config();
 
-// 1. 명령어 파일 로드 (경로가 맞는지 꼭 확인하세요!)
+// 1. 명령어 파일 로드
 const party = require("./commands/party");
 const scrim = require("./commands/scrim");
 const clear = require("./commands/clear");
 const help = require("./commands/help");
+const aram = require("./commands/aram"); // ✅ 칼바람
+const tft = require("./commands/tft"); // ✅ TFT
 
 const client = new Client({
   intents: [
@@ -18,7 +20,7 @@ const client = new Client({
 client.commands = new Collection();
 
 // 2. 명령어 배열 구성
-const commands = [party, scrim, clear, help];
+const commands = [party, scrim, clear, help, aram, tft]; // ✅ aram, tft 추가
 
 // 컬렉션에 등록
 commands.forEach((cmd) => {
@@ -54,7 +56,7 @@ client.once("ready", async () => {
     //       }
     //     }
   } catch (error) {
-        console.error("❌ 전체 명령어 동기화 중 에러 발생:", error);
+    console.error("❌ 전체 명령어 동기화 중 에러 발생:", error);
   }
 });
 
@@ -98,6 +100,12 @@ client.on("interactionCreate", async (interaction) => {
 
     if (customId.includes("scrim")) {
       await scrim.handleScrimInteraction(interaction);
+    } else if (customId.includes("aram")) {
+      // ✅ 칼바람 라우팅
+      await aram.handleAramInteraction(interaction);
+    } else if (customId.includes("tft")) {
+      // ✅ TFT 라우팅
+      await tft.handleTftInteraction(interaction);
     } else {
       await party.handlePartyInteraction(interaction);
     }
