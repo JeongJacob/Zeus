@@ -90,29 +90,6 @@ async function execute(interaction) {
     };
     saveGuildData(guildId, guildLobby);
 
-    // 12시간 후 자동 삭제
-    setTimeout(
-      async () => {
-        try {
-          const currentData = loadGuildData(guildId);
-          if (!currentData[msg.id]) return;
-          const channel = await interaction.client.channels
-            .fetch(currentData[msg.id].channelId)
-            .catch(() => null);
-          if (!channel) return;
-          const message = await channel.messages
-            .fetch(msg.id)
-            .catch(() => null);
-          if (message) await message.delete().catch(() => null);
-          delete currentData[msg.id];
-          saveGuildData(guildId, currentData);
-        } catch (error) {
-          console.log("TFT 자동 삭제 중 경미한 에러 발생 (봇 유지됨)");
-        }
-      },
-      12 * 60 * 60 * 1000,
-    );
-
     await interaction.editReply({
       content: "✅ TFT 모집이 성공적으로 생성되었습니다.",
     });
