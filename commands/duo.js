@@ -182,7 +182,7 @@ async function handleDuoInteraction(interaction) {
         .setCustomId("start_time_input")
         .setLabel("게임 시작 시간")
         .setStyle(TextInputStyle.Short)
-        .setPlaceholder("예: 지금 바로 시작, 20분 후, 21:00 등")
+        .setPlaceholder("예: 골~플/20:00 등")
         .setRequired(true);
 
       modal.addComponents(
@@ -221,9 +221,9 @@ async function handleDuoInteraction(interaction) {
 
       const tierInput = new TextInputBuilder()
         .setCustomId("tier_input")
-        .setLabel("진행 티어")
+        .setLabel("티어")
         .setStyle(TextInputStyle.Short)
-        .setPlaceholder("예: 골드 2, 플래티넘 4, 다이아 1 등")
+        .setPlaceholder("예: 실버2, 에메랄드4 등")
         .setRequired(true);
 
       const positionInput = new TextInputBuilder()
