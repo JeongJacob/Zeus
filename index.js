@@ -9,6 +9,7 @@ const clear = require("./commands/clear");
 const help = require("./commands/help");
 const aram = require("./commands/aram"); // ✅ 칼바람
 const tft = require("./commands/tft"); // ✅ TFT
+const duo = require("./commands/duo");
 
 const client = new Client({
   intents: [
@@ -21,7 +22,7 @@ const client = new Client({
 client.commands = new Collection();
 
 // 2. 명령어 배열 구성
-const commands = [party, scrim, clear, help, aram, tft, normal]; // ✅ aram, tft 추가
+const commands = [party, scrim, clear, help, aram, tft, normal, duo]; // ✅ aram, tft 추가
 
 // 컬렉션에 등록
 commands.forEach((cmd) => {
@@ -107,6 +108,10 @@ client.on("interactionCreate", async (interaction) => {
     } else if (customId.includes("tft")) {
       // ✅ TFT 라우팅
       await tft.handleTftInteraction(interaction);
+    } else if (customId.includes("duo")) {
+      await duo.handleDuoInteraction(interaction);
+    } else if (customId.includes("normal")) {
+      await duo.handleDuoInteraction(interaction);
     } else {
       await party.handlePartyInteraction(interaction);
     }
