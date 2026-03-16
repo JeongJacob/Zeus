@@ -111,7 +111,7 @@ client.on("interactionCreate", async (interaction) => {
     } else if (customId.includes("duo")) {
       await duo.handleDuoInteraction(interaction);
     } else if (customId.includes("normal")) {
-      await duo.handleDuoInteraction(interaction);
+      await normal.handleDuoInteraction(interaction);
     } else {
       await party.handlePartyInteraction(interaction);
     }
