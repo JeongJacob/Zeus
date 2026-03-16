@@ -70,7 +70,7 @@ async function execute(interaction) {
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("party_set_start_time")
-        .setLabel("시작 시간 입력")
+        .setLabel("게임 정보 입력")
         .setStyle(ButtonStyle.Primary),
     );
 
@@ -186,7 +186,7 @@ async function handlePartyInteraction(interaction) {
         .setCustomId("start_time_input")
         .setLabel("게임 시작 시간")
         .setStyle(TextInputStyle.Short)
-        .setPlaceholder("예: 즐겜 자랭/21:00 등")
+        .setPlaceholder("예: 시간/티어/비고")
         .setRequired(true);
 
       modal.addComponents(
@@ -291,7 +291,7 @@ async function updateEmbed(msgId, interaction, partyData) {
     const embed = new EmbedBuilder()
       .setDescription(
         `모집자: ${creatorName || "미입력"}\n` +
-          `게임 시작 시간: ${startTime || "미정"}\n\n` +
+          `게임 정보: ${startTime || "미정"}\n\n` +
           `${positionText}\n\n` +
           `🎲 상관없음: ${any.map((u) => `<@${u}>`).join(", ") || ""}\n\n` +
           `예비 참가: ${substitutes.map((uid) => `<@${uid}>`).join(", ") || ""}`,

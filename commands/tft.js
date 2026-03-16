@@ -59,13 +59,13 @@ async function execute(interaction) {
   try {
     const embed = new EmbedBuilder()
       .setTitle("🎲 TFT 파티 모집")
-      .setDescription("아래 버튼을 클릭하여 시작 시간을 입력해주세요.")
+      .setDescription("아래 버튼을 클릭하여 게임 정보를 입력해주세요.")
       .setColor(0xffd700);
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("tft_set_start_time")
-        .setLabel("시작 시간 입력")
+        .setLabel("게임 정보 입력")
         .setStyle(ButtonStyle.Primary),
     );
 
@@ -180,9 +180,9 @@ async function handleTftInteraction(interaction) {
 
       const timeInput = new TextInputBuilder()
         .setCustomId("start_time_input")
-        .setLabel("게임 시작 시간")
+        .setLabel("게임 정보 입력")
         .setStyle(TextInputStyle.Short)
-        .setPlaceholder("예: 지금 바로 시작, 20분 후, 18:30 등")
+        .setPlaceholder("예: 시간/티어/비고")
         .setRequired(true);
 
       modal.addComponents(

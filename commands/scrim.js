@@ -53,13 +53,13 @@ async function execute(interaction) {
 
   const embed = new EmbedBuilder()
     .setTitle("내전 모집")
-    .setDescription("게임 시작 시간을 설정하세요.")
+    .setDescription("내전 진행 모드를 설정하세요.")
     .setColor(0x3498db);
 
   const actionRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("scrim_set_start_time")
-      .setLabel("시작 시간 입력")
+      .setLabel("게임 정보 입력")
       .setStyle(ButtonStyle.Primary),
   );
 
@@ -154,12 +154,12 @@ async function handleScrimInteraction(interaction) {
     }
     const modal = new ModalBuilder()
       .setCustomId(`scrim_modal:${msgId}`)
-      .setTitle("게임 시작 시간 입력");
+      .setTitle("내전 게임 모드 설정");
     const timeInput = new TextInputBuilder()
       .setCustomId("start_time_input")
-      .setLabel("게임 시작 시간 입력")
+      .setLabel("내전 게임 모드 설정")
       .setStyle(TextInputStyle.Short)
-      .setPlaceholder("예: 지금 바로 시작, 20분 후, 18:30 등")
+      .setPlaceholder("예: 시간/티어/비고")
       .setRequired(true);
     modal.addComponents(new ActionRowBuilder().addComponents(timeInput));
     return interaction.showModal(modal);
@@ -239,7 +239,7 @@ async function updateScrimEmbed(msgId, interaction, lobbyData) {
     const embed = new EmbedBuilder()
       .setTitle(isFull ? "🔥 내전 모집 (정원 완료)" : "⚔️ 내전 모집")
       .setDescription(
-        `**게임 시작 시간:** ⏳ ${lobbyData.startTime || "미정"}\n\n` +
+        `**게임 정보:** ⏳ ${lobbyData.startTime || "미정"}\n\n` +
           `**참가자 (${lobbyData.participants.length}/10):**\n` +
           (lobbyData.participants.map((id) => `<@${id}>`).join("\n") ||
             "없음") +
