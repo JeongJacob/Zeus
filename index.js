@@ -3,6 +3,7 @@ require("dotenv").config();
 
 // 1. 명령어 파일 로드
 const party = require("./commands/party");
+const normal = require("./commands/normal");
 const scrim = require("./commands/scrim");
 const clear = require("./commands/clear");
 const help = require("./commands/help");
@@ -20,7 +21,7 @@ const client = new Client({
 client.commands = new Collection();
 
 // 2. 명령어 배열 구성
-const commands = [party, scrim, clear, help, aram, tft]; // ✅ aram, tft 추가
+const commands = [party, scrim, clear, help, aram, tft, normal]; // ✅ aram, tft 추가
 
 // 컬렉션에 등록
 commands.forEach((cmd) => {
