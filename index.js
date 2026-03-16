@@ -100,21 +100,19 @@ client.on("interactionCreate", async (interaction) => {
     const customId = interaction.customId;
     if (!customId) return;
 
-    if (customId.includes("scrim")) {
-      await scrim.handleScrimInteraction(interaction);
-    } else if (customId.includes("aram")) {
-      // ✅ 칼바람 라우팅
-      await aram.handleAramInteraction(interaction);
-    } else if (customId.includes("tft")) {
-      // ✅ TFT 라우팅
-      await tft.handleTftInteraction(interaction);
-    } else if (customId.includes("duo")) {
-      await duo.handleDuoInteraction(interaction);
-    } else if (customId.includes("normal")) {
-      await normal.handleNormalInteraction(interaction);
-    } else {
-      await party.handlePartyInteraction(interaction);
-    }
+if (customId.includes("scrim")) {
+  await scrim.handleScrimInteraction(interaction);
+} else if (customId.includes("aram")) {
+  await aram.handleAramInteraction(interaction);
+} else if (customId.includes("tft")) {
+  await tft.handleTftInteraction(interaction);
+} else if (customId.includes("duo")) {
+  await duo.handleDuoInteraction(interaction);
+} else if (customId.includes("normal")) {
+  await normal.handleNormalInteraction(interaction);
+} else {
+  await party.handlePartyInteraction(interaction);
+}
   }
 });
 
