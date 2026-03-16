@@ -221,7 +221,7 @@ async function handleDuoInteraction(interaction) {
 
       const tierInput = new TextInputBuilder()
         .setCustomId("tier_input")
-        .setLabel("현재 티어")
+        .setLabel("진행 티어")
         .setStyle(TextInputStyle.Short)
         .setPlaceholder("예: 골드 2, 플래티넘 4, 다이아 1 등")
         .setRequired(true);
