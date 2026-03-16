@@ -12,15 +12,21 @@ const {
 const fs = require("fs");
 const path = require("path");
 
-// --- 서버별 데이터 관리 설정 ---
+// --- 라인 설정 ---
+const LANE_EMOJIS = {
+  top: "🗡️ 탑",
+  jungle: "🌲 정글",
+  mid: "⚡ 미드",
+  adc: "🏹 원딜",
+  support: "🛡️ 서포터",
+};
+
 const DATA_DIR = path.join(__dirname, "../data/scrim");
 
-// 서버별 데이터 로드 함수
 function loadScrimData(guildId) {
   try {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     const filePath = path.join(DATA_DIR, `${guildId}.json`);
-
     if (!fs.existsSync(filePath) || fs.statSync(filePath).size === 0) return {};
     const content = fs.readFileSync(filePath, "utf-8").trim();
     return content ? JSON.parse(content) : {};
@@ -30,7 +36,6 @@ function loadScrimData(guildId) {
   }
 }
 
-// 서버별 데이터 저장 함수
 function saveScrimData(guildId, data) {
   try {
     const filePath = path.join(DATA_DIR, `${guildId}.json`);
@@ -73,8 +78,8 @@ async function execute(interaction) {
   const guildLobby = loadScrimData(guildId);
 
   guildLobby[msg.id] = {
-    participants: [],
-    substitutes: [],
+    participants: [], // [{ userId, lanes: ["top","mid"] }, ...]
+    substitutes: [], // [{ userId, lanes: [...] }, ...]
     creator: interaction.user.id,
     messageId: msg.id,
     startTime: null,
@@ -93,7 +98,6 @@ async function handleScrimInteraction(interaction) {
   const guildId = interaction.guild?.id;
   if (!guildId) return;
 
-  // ✅ customId 맨 먼저 선언 (TDZ 방지)
   const customId = interaction.customId;
   if (!customId) return;
 
@@ -104,7 +108,7 @@ async function handleScrimInteraction(interaction) {
     ? customId.split(":")[1]
     : interaction.message?.id;
 
-  // ✅ scrim_delete_confirm 처리 (msgId 체크 전에 처리)
+  // ── 삭제 확인 ──────────────────────────────────────────────
   if (customId.startsWith("scrim_delete_confirm:")) {
     const targetMsgId = customId.split(":")[1];
     try {
@@ -145,6 +149,7 @@ async function handleScrimInteraction(interaction) {
     return;
   }
 
+  // ── 게임 정보 입력 버튼 ─────────────────────────────────────
   if (customId === "scrim_set_start_time") {
     if (userId !== guildLobby[msgId].creator) {
       return interaction.reply({
@@ -165,6 +170,7 @@ async function handleScrimInteraction(interaction) {
     return interaction.showModal(modal);
   }
 
+  // ── 게임 정보 모달 제출 ─────────────────────────────────────
   if (
     interaction.type === InteractionType.ModalSubmit &&
     customId.startsWith("scrim_modal:")
@@ -172,21 +178,86 @@ async function handleScrimInteraction(interaction) {
     guildLobby[msgId].startTime =
       interaction.fields.getTextInputValue("start_time_input");
     saveScrimData(guildId, guildLobby);
-    await updateScrimEmbed(msgId, interaction, guildLobby[msgId]);
+    return updateScrimEmbed(msgId, interaction, guildLobby[msgId]);
   }
 
-  // ✅ 모집 삭제 버튼
+  // ── 라인 선택 모달 제출 ─────────────────────────────────────
+  if (
+    interaction.type === InteractionType.ModalSubmit &&
+    customId.startsWith("scrim_lane_modal:")
+  ) {
+    const lobby = guildLobby[msgId];
+
+    const raw = interaction.fields
+      .getTextInputValue("lane_input")
+      .toLowerCase()
+      .trim();
+    // 쉼표/공백/슬래시 모두 구분자로 허용
+    const tokens = raw.split(/[\s,/]+/).filter(Boolean);
+
+    // 한글·영문 별칭 매핑
+    const aliasMap = {
+      탑: "top",
+      top: "top",
+      정글: "jungle",
+      jungle: "jungle",
+      jg: "jungle",
+      미드: "mid",
+      mid: "mid",
+      원딜: "adc",
+      원딭: "adc",
+      adc: "adc",
+      bot: "adc",
+      서포터: "support",
+      서폿: "support",
+      support: "support",
+      sup: "support",
+    };
+
+    const selectedLanes = [
+      ...new Set(tokens.map((t) => aliasMap[t]).filter(Boolean)),
+    ].slice(0, 2);
+
+    if (selectedLanes.length === 0) {
+      return interaction.reply({
+        content:
+          "❌ 올바른 라인을 입력해주세요.\n예: `탑`, `탑, 정글`, `mid adc`",
+        flags: 64,
+      });
+    }
+
+    // 이미 참가 중이면 라인만 업데이트
+    const existingIdx = lobby.participants.findIndex(
+      (p) => p.userId === userId,
+    );
+    if (existingIdx !== -1) {
+      lobby.participants[existingIdx].lanes = selectedLanes;
+    } else {
+      if (lobby.participants.length >= 10) {
+        return interaction.reply({
+          content: "참가 인원이 가득 찼습니다.",
+          flags: 64,
+        });
+      }
+      // 예비 목록에서 제거 후 참가자에 추가
+      lobby.substitutes = lobby.substitutes.filter((p) => p.userId !== userId);
+      lobby.participants.push({ userId, lanes: selectedLanes });
+    }
+
+    saveScrimData(guildId, guildLobby);
+    return updateScrimEmbed(msgId, interaction, lobby);
+  }
+
+  // ── 모집 삭제 버튼 ──────────────────────────────────────────
   if (customId === "scrim_delete") {
     const isCreator = userId === guildLobby[msgId].creator;
     const isAdmin = interaction.member.permissions.has("Administrator");
-
     if (!isCreator && !isAdmin) {
       return interaction.reply({
         content: "❌ 모집자 또는 관리자만 삭제할 수 있습니다.",
         flags: 64,
       });
     }
-
     return interaction.reply({
       content: "정말 내전 모집을 삭제하시겠습니까?",
       flags: 64,
@@ -205,46 +276,164 @@ async function handleScrimInteraction(interaction) {
     });
   }
 
-  if (["join_scrim", "substitute_scrim", "cancel_scrim"].includes(customId)) {
+  // ── 참가 버튼 → 라인 선택 모달 표시 ───────────────────────
+  if (customId === "join_scrim") {
     const lobby = guildLobby[msgId];
-    if (customId === "join_scrim") {
-      if (lobby.participants.includes(userId))
-        return interaction.reply({ content: "이미 참가 중입니다.", flags: 64 });
-      if (lobby.participants.length >= 10)
-        return interaction.reply({
-          content: "참가 인원이 가득 찼습니다.",
-          flags: 64,
-        });
-      lobby.participants.push(userId);
-      lobby.substitutes = lobby.substitutes.filter((id) => id !== userId);
-    } else if (customId === "substitute_scrim") {
-      if (!lobby.substitutes.includes(userId)) lobby.substitutes.push(userId);
-      lobby.participants = lobby.participants.filter((id) => id !== userId);
-    } else if (customId === "cancel_scrim") {
-      lobby.participants = lobby.participants.filter((id) => id !== userId);
-      lobby.substitutes = lobby.substitutes.filter((id) => id !== userId);
+    if (lobby.isClosed) {
+      return interaction.reply({ content: "❌ 마감된 모집입니다.", flags: 64 });
+    }
+
+    const alreadyIn = lobby.participants.find((p) => p.userId === userId);
+    const currentLanesText = alreadyIn
+      ? alreadyIn.lanes.map((l) => LANE_EMOJIS[l]).join(", ")
+      : "";
+
+    const modal = new ModalBuilder()
+      .setCustomId(`scrim_lane_modal:${msgId}`)
+      .setTitle("라인 선택 (최대 2개)");
+    const laneInput = new TextInputBuilder()
+      .setCustomId("lane_input")
+      .setLabel("라인을 입력하세요 (최대 2개)")
+      .setStyle(TextInputStyle.Short)
+      .setPlaceholder("탑 / 정글 / 미드 / 원딜 / 서포터")
+      .setValue(alreadyIn ? alreadyIn.lanes.join(", ") : "")
+      .setRequired(true);
+    modal.addComponents(new ActionRowBuilder().addComponents(laneInput));
+    return interaction.showModal(modal);
+  }
+
+  // ── 예비 참가 버튼 ──────────────────────────────────────────
+  if (customId === "substitute_scrim") {
+    const lobby = guildLobby[msgId];
+
+    const modal = new ModalBuilder()
+      .setCustomId(`scrim_sub_lane_modal:${msgId}`)
+      .setTitle("예비 라인 선택 (최대 2개)");
+    const laneInput = new TextInputBuilder()
+      .setCustomId("lane_input")
+      .setLabel("라인을 입력하세요 (최대 2개)")
+      .setStyle(TextInputStyle.Short)
+      .setPlaceholder("탑 / 정글 / 미드 / 원딜 / 서포터")
+      .setRequired(true);
+    modal.addComponents(new ActionRowBuilder().addComponents(laneInput));
+    return interaction.showModal(modal);
+  }
+
+  // ── 예비 라인 모달 제출 ─────────────────────────────────────
+  if (
+    interaction.type === InteractionType.ModalSubmit &&
+    customId.startsWith("scrim_sub_lane_modal:")
+  ) {
+    const lobby = guildLobby[msgId];
+    const raw = interaction.fields
+      .getTextInputValue("lane_input")
+      .toLowerCase()
+      .trim();
+    const tokens = raw.split(/[\s,/]+/).filter(Boolean);
+    const aliasMap = {
+      탑: "top",
+      top: "top",
+      정글: "jungle",
+      jungle: "jungle",
+      jg: "jungle",
+      미드: "mid",
+      mid: "mid",
+      원딜: "adc",
+      원딭: "adc",
+      adc: "adc",
+      bot: "adc",
+      서포터: "support",
+      서폿: "support",
+      support: "support",
+      sup: "support",
+    };
+    const selectedLanes = [
+      ...new Set(tokens.map((t) => aliasMap[t]).filter(Boolean)),
+    ].slice(0, 2);
+
+    if (selectedLanes.length === 0) {
+      return interaction.reply({
+        content:
+          "❌ 올바른 라인을 입력해주세요.\n예: `탑`, `탑, 정글`, `mid adc`",
+        flags: 64,
+      });
+    }
+
+    const existingSubIdx = lobby.substitutes.findIndex(
+      (p) => p.userId === userId,
+    );
+    if (existingSubIdx !== -1) {
+      lobby.substitutes[existingSubIdx].lanes = selectedLanes;
+    } else {
+      lobby.participants = lobby.participants.filter(
+        (p) => p.userId !== userId,
+      );
+      lobby.substitutes.push({ userId, lanes: selectedLanes });
     }
 
     saveScrimData(guildId, guildLobby);
-    await updateScrimEmbed(msgId, interaction, lobby);
+    return updateScrimEmbed(msgId, interaction, lobby);
+  }
+
+  // ── 참가 취소 버튼 ──────────────────────────────────────────
+  // ── 참가 취소 버튼 ──────────────────────────────────────────
+  if (customId === "cancel_scrim") {
+    const lobby = guildLobby[msgId];
+    const wasParticipant = lobby.participants.some((p) => p.userId === userId);
+
+    lobby.participants = lobby.participants.filter((p) => p.userId !== userId);
+    lobby.substitutes = lobby.substitutes.filter((p) => p.userId !== userId);
+
+    if (
+      wasParticipant &&
+      lobby.participants.length < 10 &&
+      lobby.substitutes.length > 0
+    ) {
+      const promoted = lobby.substitutes.shift();
+      lobby.participants.push(promoted);
+
+      try {
+        const promotedUser = await interaction.client.users.fetch(
+          promoted.userId,
+        );
+        await promotedUser
+          .send(
+            `✅ **내전 예비에서 본 참가자로 승격되었습니다!**\n` +
+              `선택한 라인: ${promoted.lanes.map((l) => LANE_EMOJIS[l] ?? l).join(", ")}`,
+          )
+          .catch(() => null);
+      } catch (_) {}
+    }
+
+    saveScrimData(guildId, guildLobby);
+    return updateScrimEmbed(msgId, interaction, lobby);
   }
 }
 
+// ── 임베드 업데이트 ────────────────────────────────────────────
 async function updateScrimEmbed(msgId, interaction, lobbyData) {
   try {
     const msg =
       interaction.message || (await interaction.channel.messages.fetch(msgId));
     const isFull = lobbyData.participants.length >= 10;
 
+    // 참가자 한 줄: @멘션 + 라인 이모지
+    const formatParticipant = ({ userId, lanes }) => {
+      const laneStr =
+        lanes && lanes.length > 0
+          ? " · " + lanes.map((l) => LANE_EMOJIS[l] ?? l).join(", ")
+          : "";
+      return `<@${userId}>${laneStr}`;
+    };
+
     const embed = new EmbedBuilder()
       .setTitle(isFull ? "🔥 내전 모집 (정원 완료)" : "⚔️ 내전 모집")
       .setDescription(
         `**게임 정보:** ⏳ ${lobbyData.startTime || "미정"}\n\n` +
           `**참가자 (${lobbyData.participants.length}/10):**\n` +
-          (lobbyData.participants.map((id) => `<@${id}>`).join("\n") ||
-            "없음") +
+          (lobbyData.participants.map(formatParticipant).join("\n") || "없음") +
           `\n\n**예비 참가자:**\n` +
-          (lobbyData.substitutes.map((id) => `<@${id}>`).join("\n") || "없음"),
+          (lobbyData.substitutes.map(formatParticipant).join("\n") || "없음"),
       )
       .setColor(isFull ? 0xe74c3c : 0x3498db);
 
@@ -262,7 +451,6 @@ async function updateScrimEmbed(msgId, interaction, lobbyData) {
         .setCustomId("cancel_scrim")
         .setLabel("참가 취소")
         .setStyle(ButtonStyle.Danger),
-      // ✅ 모집 삭제 버튼 추가
       new ButtonBuilder()
         .setCustomId("scrim_delete")
         .setLabel("모집 삭제 🗑️")
@@ -276,26 +464,5 @@ async function updateScrimEmbed(msgId, interaction, lobbyData) {
     console.error("내전 임베드 업데이트 실패:", e);
   }
 }
-
-/*
-client.once("ready", async () => {
-  console.log(`✅ 로그인됨: ${client.user.tag}`);
-
-  try {
-    await client.application.commands.set([]);
-    console.log("🗑️ 글로벌 명령어 전체 삭제 완료");
-
-    const guilds = await client.guilds.fetch();
-    for (const [guildId, guild] of guilds) {
-      await client.application.commands.set([], guildId);
-      console.log(`🗑️ [${guild.name}] 서버 명령어 삭제 완료`);
-    }
-
-    console.log("✨ 모든 명령어가 초기화되었습니다. 이제 이 코드를 지우고 다시 동기화하세요.");
-  } catch (error) {
-    console.error("❌ 명령어 삭제 중 에러 발생:", error);
-  }
-});
-*/
 
 module.exports = { data, execute, handleScrimInteraction };
