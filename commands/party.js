@@ -186,7 +186,7 @@ async function handlePartyInteraction(interaction) {
         .setCustomId("start_time_input")
         .setLabel("게임 시작 시간")
         .setStyle(TextInputStyle.Short)
-        .setPlaceholder("예: 지금 바로 시작, 20분 후, 18:30 등")
+        .setPlaceholder("예: 즐겜 자랭/21:00 등")
         .setRequired(true);
 
       modal.addComponents(
