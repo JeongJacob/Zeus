@@ -12,16 +12,15 @@ const {
 const fs = require("fs");
 const path = require("path");
 
-// --- 라인 설정 ---
 const LANE_EMOJIS = {
   top: "🗡️ 탑",
   jungle: "🌲 정글",
   mid: "⚡ 미드",
   adc: "🏹 원딜",
   support: "🛡️ 서포터",
+  any: "🎲 상관없음",
 };
 
-// --- 서버별 데이터 관리 설정 ---
 const DATA_DIR = path.join(__dirname, "../data/scrim");
 
 function loadScrimData(guildId) {
@@ -52,10 +51,7 @@ const data = new SlashCommandBuilder()
 
 async function execute(interaction) {
   if (!interaction.guild)
-    return interaction.reply({
-      content: "서버에서만 사용 가능합니다.",
-      flags: 64,
-    });
+    return interaction.reply({ content: "서버에서만 사용 가능합니다.", flags: 64 });
 
   const embed = new EmbedBuilder()
     .setTitle("내전 모집")
@@ -79,8 +75,8 @@ async function execute(interaction) {
   const guildLobby = loadScrimData(guildId);
 
   guildLobby[msg.id] = {
-    participants: [], // [{ userId, lanes: ["top","mid"] }, ...]
-    substitutes: [], // [{ userId, lanes: [...] }, ...]
+    participants: [],
+    substitutes: [],
     creator: interaction.user.id,
     messageId: msg.id,
     startTime: null,
@@ -89,10 +85,7 @@ async function execute(interaction) {
   };
   saveScrimData(guildId, guildLobby);
 
-  await interaction.reply({
-    flags: 64,
-    content: "내전 모집이 생성되었습니다.",
-  });
+  await interaction.reply({ flags: 64, content: "내전 모집이 생성되었습니다." });
 }
 
 async function handleScrimInteraction(interaction) {
@@ -101,7 +94,7 @@ async function handleScrimInteraction(interaction) {
   const customId = interaction.customId;
   if (!customId) return;
 
-  // ── DM 승격 수락/거절 (guildId 없이도 처리) ────────────────
+  // ── DM 승격 수락/거절 ──────────────────────────────────────
   if (
     customId.startsWith("scrim_promote_accept:") ||
     customId.startsWith("scrim_promote_decline:")
@@ -114,36 +107,24 @@ async function handleScrimInteraction(interaction) {
     const lobby = lobby_data[targetMsgId];
 
     if (!lobby) {
-      return interaction.update({
-        content: "❌ 만료된 내전 데이터입니다.",
-        components: [],
-      });
+      return interaction.update({ content: "❌ 만료된 내전 데이터입니다.", components: [] });
     }
 
     if (customId.startsWith("scrim_promote_accept:")) {
       const subEntry = lobby.substitutes.find((p) => p.userId === userId);
       if (!subEntry) {
-        return interaction.update({
-          content: "❌ 이미 만료된 오퍼입니다.",
-          components: [],
-        });
+        return interaction.update({ content: "❌ 이미 만료된 오퍼입니다.", components: [] });
       }
       if (lobby.participants.length >= 10) {
-        return interaction.update({
-          content: "❌ 이미 정원이 찼습니다.",
-          components: [],
-        });
+        return interaction.update({ content: "❌ 이미 정원이 찼습니다.", components: [] });
       }
 
       lobby.substitutes = lobby.substitutes.filter((p) => p.userId !== userId);
       lobby.participants.push(subEntry);
       saveScrimData(targetGuildId, lobby_data);
 
-      // 원본 모집 임베드 업데이트
       try {
-        const originalChannel = await interaction.client.channels.fetch(
-          lobby.channelId,
-        );
+        const originalChannel = await interaction.client.channels.fetch(lobby.channelId);
         const originalMsg = await originalChannel.messages.fetch(targetMsgId);
         await updateScrimEmbedDirect(originalMsg, lobby);
       } catch (_) {}
@@ -157,17 +138,10 @@ async function handleScrimInteraction(interaction) {
     if (customId.startsWith("scrim_promote_decline:")) {
       lobby.substitutes = lobby.substitutes.filter((p) => p.userId !== userId);
       saveScrimData(targetGuildId, lobby_data);
-
       await interaction.update({ content: "거절하셨습니다.", components: [] });
 
-      // 다음 예비자에게 오퍼 전달
       if (lobby.participants.length < 10 && lobby.substitutes.length > 0) {
-        await offerPromotionToNext(
-          interaction,
-          targetGuildId,
-          targetMsgId,
-          lobby,
-        );
+        await offerPromotionToNext(interaction, targetGuildId, targetMsgId, lobby);
       }
       return;
     }
@@ -197,39 +171,27 @@ async function handleScrimInteraction(interaction) {
       }
       delete guildLobby[targetMsgId];
       saveScrimData(guildId, guildLobby);
-      return interaction.update({
-        content: "✅ 내전 모집이 삭제되었습니다.",
-        components: [],
-      });
+      return interaction.update({ content: "✅ 내전 모집이 삭제되었습니다.", components: [] });
     } catch (e) {
       console.error("내전 삭제 실패:", e);
     }
   }
 
   if (customId === "scrim_delete_cancel") {
-    return interaction.update({
-      content: "삭제가 취소되었습니다.",
-      components: [],
-    });
+    return interaction.update({ content: "삭제가 취소되었습니다.", components: [] });
   }
 
   if (!msgId || !guildLobby[msgId]) {
     if (interaction.isButton() || interaction.isModalSubmit()) {
-      return interaction.reply({
-        content: "❌ 만료된 내전 데이터입니다.",
-        flags: 64,
-      });
+      return interaction.reply({ content: "❌ 만료된 내전 데이터입니다.", flags: 64 });
     }
     return;
   }
 
-  // ── 게임 정보 입력 버튼 ─────────────────────────────────────
+  // ── 게임 정보 입력 버튼 ────────────────────────────────────
   if (customId === "scrim_set_start_time") {
     if (userId !== guildLobby[msgId].creator) {
-      return interaction.reply({
-        content: "❌ 당신은 이 모집을 생성한 사용자가 아닙니다.",
-        flags: 64,
-      });
+      return interaction.reply({ content: "❌ 당신은 이 모집을 생성한 사용자가 아닙니다.", flags: 64 });
     }
     const modal = new ModalBuilder()
       .setCustomId(`scrim_modal:${msgId}`)
@@ -244,7 +206,7 @@ async function handleScrimInteraction(interaction) {
     return interaction.showModal(modal);
   }
 
-  // ── 게임 정보 모달 제출 ─────────────────────────────────────
+  // ── 게임 정보 모달 제출 ────────────────────────────────────
   if (
     interaction.type === InteractionType.ModalSubmit &&
     customId.startsWith("scrim_modal:")
@@ -255,7 +217,7 @@ async function handleScrimInteraction(interaction) {
     return updateScrimEmbed(msgId, interaction, guildLobby[msgId]);
   }
 
-  // ── 라인 선택 모달 제출 (참가) ──────────────────────────────
+  // ── 라인 선택 모달 제출 (참가) ─────────────────────────────
   if (
     interaction.type === InteractionType.ModalSubmit &&
     customId.startsWith("scrim_lane_modal:")
@@ -267,23 +229,17 @@ async function handleScrimInteraction(interaction) {
 
     if (selectedLanes.length === 0) {
       return interaction.reply({
-        content:
-          "❌ 올바른 라인을 입력해주세요.\n예: `탑`, `탑, 정글`, `mid adc`",
+        content: "❌ 올바른 라인을 입력해주세요.\n예: `탑`, `탑, 정글`, `상관없음`",
         flags: 64,
       });
     }
 
-    const existingIdx = lobby.participants.findIndex(
-      (p) => p.userId === userId,
-    );
+    const existingIdx = lobby.participants.findIndex((p) => p.userId === userId);
     if (existingIdx !== -1) {
       lobby.participants[existingIdx].lanes = selectedLanes;
     } else {
       if (lobby.participants.length >= 10) {
-        return interaction.reply({
-          content: "참가 인원이 가득 찼습니다.",
-          flags: 64,
-        });
+        return interaction.reply({ content: "참가 인원이 가득 찼습니다.", flags: 64 });
       }
       lobby.substitutes = lobby.substitutes.filter((p) => p.userId !== userId);
       lobby.participants.push({ userId, lanes: selectedLanes });
@@ -293,7 +249,7 @@ async function handleScrimInteraction(interaction) {
     return updateScrimEmbed(msgId, interaction, lobby);
   }
 
-  // ── 라인 선택 모달 제출 (예비) ──────────────────────────────
+  // ── 라인 선택 모달 제출 (예비) ─────────────────────────────
   if (
     interaction.type === InteractionType.ModalSubmit &&
     customId.startsWith("scrim_sub_lane_modal:")
@@ -305,21 +261,16 @@ async function handleScrimInteraction(interaction) {
 
     if (selectedLanes.length === 0) {
       return interaction.reply({
-        content:
-          "❌ 올바른 라인을 입력해주세요.\n예: `탑`, `탑, 정글`, `mid adc`",
+        content: "❌ 올바른 라인을 입력해주세요.\n예: `탑`, `탑, 정글`, `상관없음`",
         flags: 64,
       });
     }
 
-    const existingSubIdx = lobby.substitutes.findIndex(
-      (p) => p.userId === userId,
-    );
+    const existingSubIdx = lobby.substitutes.findIndex((p) => p.userId === userId);
     if (existingSubIdx !== -1) {
       lobby.substitutes[existingSubIdx].lanes = selectedLanes;
     } else {
-      lobby.participants = lobby.participants.filter(
-        (p) => p.userId !== userId,
-      );
+      lobby.participants = lobby.participants.filter((p) => p.userId !== userId);
       lobby.substitutes.push({ userId, lanes: selectedLanes });
     }
 
@@ -327,15 +278,12 @@ async function handleScrimInteraction(interaction) {
     return updateScrimEmbed(msgId, interaction, lobby);
   }
 
-  // ── 모집 삭제 버튼 ──────────────────────────────────────────
+  // ── 모집 삭제 버튼 ─────────────────────────────────────────
   if (customId === "scrim_delete") {
     const isCreator = userId === guildLobby[msgId].creator;
     const isAdmin = interaction.member.permissions.has("Administrator");
     if (!isCreator && !isAdmin) {
-      return interaction.reply({
-        content: "❌ 모집자 또는 관리자만 삭제할 수 있습니다.",
-        flags: 64,
-      });
+      return interaction.reply({ content: "❌ 모집자 또는 관리자만 삭제할 수 있습니다.", flags: 64 });
     }
     return interaction.reply({
       content: "정말 내전 모집을 삭제하시겠습니까?",
@@ -355,7 +303,7 @@ async function handleScrimInteraction(interaction) {
     });
   }
 
-  // ── 참가 버튼 → 라인 선택 모달 ─────────────────────────────
+  // ── 참가 버튼 → 라인 선택 모달 ────────────────────────────
   if (customId === "join_scrim") {
     const lobby = guildLobby[msgId];
     if (lobby.isClosed) {
@@ -370,14 +318,14 @@ async function handleScrimInteraction(interaction) {
       .setCustomId("lane_input")
       .setLabel("라인을 입력하세요 (최대 2개)")
       .setStyle(TextInputStyle.Short)
-      .setPlaceholder("탑 / 정글 / 미드 / 원딜 / 서포터")
+      .setPlaceholder("탑 / 정글 / 미드 / 원딜 / 서포터 / 상관없음")
       .setValue(alreadyIn ? alreadyIn.lanes.join(", ") : "")
       .setRequired(true);
     modal.addComponents(new ActionRowBuilder().addComponents(laneInput));
     return interaction.showModal(modal);
   }
 
-  // ── 예비 참가 버튼 → 라인 선택 모달 ───────────────────────
+  // ── 예비 참가 버튼 → 라인 선택 모달 ──────────────────────
   if (customId === "substitute_scrim") {
     const modal = new ModalBuilder()
       .setCustomId(`scrim_sub_lane_modal:${msgId}`)
@@ -386,13 +334,13 @@ async function handleScrimInteraction(interaction) {
       .setCustomId("lane_input")
       .setLabel("라인을 입력하세요 (최대 2개)")
       .setStyle(TextInputStyle.Short)
-      .setPlaceholder("탑 / 정글 / 미드 / 원딜 / 서포터")
+      .setPlaceholder("탑 / 정글 / 미드 / 원딜 / 서포터 / 상관없음")
       .setRequired(true);
     modal.addComponents(new ActionRowBuilder().addComponents(laneInput));
     return interaction.showModal(modal);
   }
 
-  // ── 참가 취소 버튼 ──────────────────────────────────────────
+  // ── 참가 취소 버튼 ─────────────────────────────────────────
   if (customId === "cancel_scrim") {
     const lobby = guildLobby[msgId];
     const wasParticipant = lobby.participants.some((p) => p.userId === userId);
@@ -401,7 +349,6 @@ async function handleScrimInteraction(interaction) {
     lobby.participants = lobby.participants.filter((p) => p.userId !== userId);
     lobby.substitutes = lobby.substitutes.filter((p) => p.userId !== userId);
 
-    // ✅ 취소 전 10명이 꽉 찼었고 + 예비자가 있을 때만 DM 발송
     if (wasParticipant && wasFullBeforeCancel && lobby.substitutes.length > 0) {
       await offerPromotionToNext(interaction, guildId, msgId, lobby);
     }
@@ -414,34 +361,18 @@ async function handleScrimInteraction(interaction) {
 // ── 라인 파싱 헬퍼 ─────────────────────────────────────────
 function parseLanes(raw) {
   const aliasMap = {
-    탑: "top",
-    top: "top",
-    정글: "jungle",
-    jungle: "jungle",
-    jg: "jungle",
-    미드: "mid",
-    mid: "mid",
-    원딜: "adc",
-    원딭: "adc",
-    adc: "adc",
-    bot: "adc",
-    서포터: "support",
-    서폿: "support",
-    support: "support",
-    sup: "support",
+    탑: "top", top: "top",
+    정글: "jungle", jungle: "jungle", jg: "jungle",
+    미드: "mid", mid: "mid",
+    원딜: "adc", 원딭: "adc", adc: "adc", bot: "adc",
+    서포터: "support", 서폿: "support", support: "support", sup: "support",
+    상관없음: "any", 상관: "any", any: "any",
   };
-  const tokens = raw
-    .toLowerCase()
-    .trim()
-    .split(/[\s,/]+/)
-    .filter(Boolean);
-  return [...new Set(tokens.map((t) => aliasMap[t]).filter(Boolean))].slice(
-    0,
-    2,
-  );
+  const tokens = raw.toLowerCase().trim().split(/[\s,/]+/).filter(Boolean);
+  return [...new Set(tokens.map((t) => aliasMap[t]).filter(Boolean))].slice(0, 2);
 }
 
-// ── DM으로 승격 오퍼 발송 ──────────────────────────────────
+// ── DM 승격 오퍼 발송 ──────────────────────────────────────
 async function offerPromotionToNext(interaction, guildId, msgId, lobby) {
   if (lobby.substitutes.length === 0) return;
 
@@ -467,15 +398,12 @@ async function offerPromotionToNext(interaction, guildId, msgId, lobby) {
       ],
     });
   } catch (_) {
-    // DM 차단 등 실패 시 → 해당 예비자 제거 후 다음 순위에게 시도
-    lobby.substitutes = lobby.substitutes.filter(
-      (p) => p.userId !== next.userId,
-    );
+    lobby.substitutes = lobby.substitutes.filter((p) => p.userId !== next.userId);
     await offerPromotionToNext(interaction, guildId, msgId, lobby);
   }
 }
 
-// ── 임베드 업데이트 (서버 채널용) ─────────────────────────
+// ── 임베드 업데이트 (서버 채널용) ──────────────────────────
 async function updateScrimEmbed(msgId, interaction, lobbyData) {
   try {
     const msg =
@@ -492,12 +420,12 @@ async function updateScrimEmbed(msgId, interaction, lobbyData) {
 async function updateScrimEmbedDirect(msg, lobbyData) {
   const isFull = lobbyData.participants.length >= 10;
 
-  const formatParticipant = ({ userId, lanes }) => {
+  const formatParticipant = ({ userId, lanes }, index) => {
     const laneStr =
       lanes?.length > 0
         ? " · " + lanes.map((l) => LANE_EMOJIS[l] ?? l).join(", ")
         : "";
-    return `<@${userId}>${laneStr}`;
+    return `${index + 1}번 <@${userId}>${laneStr}`;
   };
 
   const embed = new EmbedBuilder()
