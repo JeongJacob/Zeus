@@ -44,6 +44,8 @@ const positions = {
   서폿: "✨",
 };
 
+const MAX_PLAYERS = 5;
+
 const data = new SlashCommandBuilder()
   .setName("자랭")
   .setDescription("게임 모집을 시작합니다.");
@@ -110,7 +112,6 @@ async function handlePartyInteraction(interaction) {
   const guildId = interaction.guild?.id;
   if (!guildId) return;
 
-  // ✅ customId를 맨 먼저 선언 (TDZ 방지)
   const customId = interaction.customId;
   if (!customId) return;
 
@@ -121,7 +122,6 @@ async function handlePartyInteraction(interaction) {
     ? customId.split(":")[1]
     : interaction.message?.id;
 
-  // ✅ party_delete_confirm 처리 (msgId 체크 전에 처리해야 함)
   if (customId.startsWith("party_delete_confirm:")) {
     const targetMsgId = customId.split(":")[1];
     try {
@@ -170,7 +170,8 @@ async function handlePartyInteraction(interaction) {
           flags: 64,
         });
       }
-      const nickname = interaction.member?.displayName || interaction.user.username;
+      const nickname =
+        interaction.member?.displayName || interaction.user.username;
       const modal = new ModalBuilder()
         .setCustomId(`party_modal:${msgId}`)
         .setTitle("게임 시작 설정");
@@ -281,6 +282,9 @@ async function updateEmbed(msgId, interaction, partyData) {
       interaction.message || (await interaction.channel.messages.fetch(msgId));
     const { startTime, players, substitutes, creatorName, any } = partyData;
 
+    const filledCount = Object.keys(players).length;
+    const isFull = filledCount >= MAX_PLAYERS;
+
     const positionText = Object.keys(positions)
       .map((role) => {
         const user = players[role];
@@ -288,15 +292,21 @@ async function updateEmbed(msgId, interaction, partyData) {
       })
       .join("\n");
 
+    // 예비 참가자 순번 표시
+    const substituteText =
+      substitutes.length > 0
+        ? substitutes.map((uid, i) => `${i + 1}번 <@${uid}>`).join(", ")
+        : "";
+
     const embed = new EmbedBuilder()
       .setDescription(
         `모집자: ${creatorName || "미입력"}\n` +
           `게임 정보: ${startTime || "미정"}\n\n` +
           `${positionText}\n\n` +
           `🎲 상관없음: ${any.map((u) => `<@${u}>`).join(", ") || ""}\n\n` +
-          `예비 참가: ${substitutes.map((uid) => `<@${uid}>`).join(", ") || ""}`,
+          `예비 참가: ${substituteText || ""}`,
       )
-      .setColor(0x00ff00);
+      .setColor(isFull ? 0x95a5a6 : 0x00ff00);
 
     const row1 = new ActionRowBuilder();
     const row2 = new ActionRowBuilder();
@@ -307,7 +317,7 @@ async function updateEmbed(msgId, interaction, partyData) {
           .setCustomId(role)
           .setLabel(`${role} ${emoji}`)
           .setStyle(ButtonStyle.Primary)
-          .setDisabled(!!players[role]),
+          .setDisabled(!!players[role] || isFull),
       );
     }
 
@@ -315,7 +325,8 @@ async function updateEmbed(msgId, interaction, partyData) {
       new ButtonBuilder()
         .setCustomId("party_any")
         .setLabel("상관없음 🎲")
-        .setStyle(ButtonStyle.Secondary),
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(isFull),
       new ButtonBuilder()
         .setCustomId("party_substitute")
         .setLabel("예비 참가")

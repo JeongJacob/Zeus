@@ -39,7 +39,6 @@ function saveGuildData(guildId, data) {
   }
 }
 
-// 칼바람은 포지션 없이 5명 슬롯으로 관리
 const MAX_PLAYERS = 5;
 
 const data = new SlashCommandBuilder()
@@ -81,18 +80,15 @@ async function execute(interaction) {
     const guildId = interaction.guild.id;
     const guildLobby = loadGuildData(guildId);
 
-    // players: { "1": userId, "2": userId, ... } 형태로 슬롯 관리
     guildLobby[msg.id] = {
       creator: interaction.user.id,
       creatorName: null,
-      players: {}, // 슬롯 번호: userId
+      players: {},
       substitutes: [],
       messageId: msg.id,
       startTime: null,
       channelId: interaction.channel.id,
     };
-    // 초기 임베드를 모집자 멘션이 포함된 형태로 즉시 업데이트
-    guildLobby[msg.id].pendingMsg = msg;
     saveGuildData(guildId, guildLobby);
 
     await interaction.editReply({
@@ -120,7 +116,6 @@ async function handleAramInteraction(interaction) {
     ? customId.split(":")[1]
     : interaction.message?.id;
 
-  // 삭제 확인 버튼 처리
   if (customId.startsWith("aram_delete_confirm:")) {
     const targetMsgId = customId.split(":")[1];
     try {
@@ -162,7 +157,6 @@ async function handleAramInteraction(interaction) {
   }
 
   if (interaction.isButton()) {
-    // 시작 시간 입력 모달
     if (customId === "aram_set_start_time") {
       if (userId !== guildLobby[msgId].creator) {
         return interaction.reply({
@@ -197,7 +191,6 @@ async function handleAramInteraction(interaction) {
       return interaction.showModal(modal);
     }
 
-    // 모집 삭제
     if (customId === "aram_delete") {
       const isCreator = userId === guildLobby[msgId].creator;
       const isAdmin = interaction.member.permissions.has("Administrator");
@@ -227,14 +220,12 @@ async function handleAramInteraction(interaction) {
       });
     }
 
-    // 참여 취소
     if (customId === "aram_cancel") {
       removePlayer(guildLobby[msgId], userId);
       saveGuildData(guildId, guildLobby);
       return await updateEmbed(msgId, interaction, guildLobby[msgId]);
     }
 
-    // 예비 참가
     if (customId === "aram_substitute") {
       removePlayer(guildLobby[msgId], userId);
       if (!guildLobby[msgId].substitutes.includes(userId)) {
@@ -244,11 +235,17 @@ async function handleAramInteraction(interaction) {
       return await updateEmbed(msgId, interaction, guildLobby[msgId]);
     }
 
-    // 슬롯 참가 버튼 (aram_slot_1 ~ aram_slot_5)
     if (customId.startsWith("aram_slot_")) {
-      const slotNum = customId.replace("aram_slot_", ""); // "1" ~ "5"
+      const slotNum = customId.replace("aram_slot_", "");
       const players = guildLobby[msgId].players;
+      const filledCount = Object.keys(players).length;
 
+      if (filledCount >= MAX_PLAYERS) {
+        return interaction.reply({
+          content: "이미 정원이 찼습니다.",
+          flags: 64,
+        });
+      }
       if (players[slotNum]) {
         return interaction.reply({
           content: "이미 참가한 슬롯입니다.",
@@ -263,7 +260,6 @@ async function handleAramInteraction(interaction) {
     }
   }
 
-  // 모달 제출 처리
   if (
     interaction.type === InteractionType.ModalSubmit &&
     customId.startsWith("aram_modal:")
@@ -279,7 +275,6 @@ async function handleAramInteraction(interaction) {
 
 function removePlayer(partyData, userId) {
   if (!partyData) return;
-  // 슬롯에서 제거
   for (const slot in partyData.players) {
     if (partyData.players[slot] === userId) {
       delete partyData.players[slot];
@@ -295,14 +290,19 @@ async function updateEmbed(msgId, interaction, partyData) {
       interaction.message || (await interaction.channel.messages.fetch(msgId));
     const { startTime, players, substitutes, creatorName } = partyData;
 
-    // 슬롯 텍스트 생성
+    const filledCount = Object.keys(players).length;
+    const isFull = filledCount >= MAX_PLAYERS;
+
     const slotText = Array.from({ length: MAX_PLAYERS }, (_, i) => {
       const slot = String(i + 1);
       const user = players[slot];
       return `${slot}번: ${user ? `<@${user}>` : ""}`;
     }).join("\n");
 
-    const filledCount = Object.keys(players).length;
+    const substituteText =
+      substitutes.length > 0
+        ? substitutes.map((uid, i) => `${i + 1}번 <@${uid}>`).join(", ")
+        : "없음";
 
     const embed = new EmbedBuilder()
       .setTitle("❄️ 칼바람 나락 모집")
@@ -311,11 +311,10 @@ async function updateEmbed(msgId, interaction, partyData) {
           `게임 정보: ${startTime || "미정"}\n\n` +
           `👥 참가자 (${filledCount}/${MAX_PLAYERS})\n` +
           `${slotText}\n\n` +
-          `예비 참가: ${substitutes.map((uid) => `<@${uid}>`).join(", ") || "없음"}`,
+          `예비 참가: ${substituteText}`,
       )
-      .setColor(0x00bfff);
+      .setColor(isFull ? 0x95a5a6 : 0x00bfff);
 
-    // 슬롯 버튼 행 (1~5번)
     const row1 = new ActionRowBuilder();
     for (let i = 1; i <= MAX_PLAYERS; i++) {
       const slot = String(i);
@@ -324,11 +323,10 @@ async function updateEmbed(msgId, interaction, partyData) {
           .setCustomId(`aram_slot_${slot}`)
           .setLabel(`${slot}번`)
           .setStyle(ButtonStyle.Primary)
-          .setDisabled(!!players[slot]),
+          .setDisabled(!!players[slot] || isFull),
       );
     }
 
-    // 기타 버튼 행
     const row2 = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("aram_substitute")

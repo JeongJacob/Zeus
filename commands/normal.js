@@ -44,6 +44,8 @@ const positions = {
   서폿: "✨",
 };
 
+const MAX_PLAYERS = 5;
+
 const data = new SlashCommandBuilder()
   .setName("일반")
   .setDescription("롤 일반게임 모집을 시작합니다.");
@@ -281,12 +283,21 @@ async function updateEmbed(msgId, interaction, partyData) {
       interaction.message || (await interaction.channel.messages.fetch(msgId));
     const { startTime, players, substitutes, creatorName, any } = partyData;
 
+    const filledCount = Object.keys(players).length;
+    const isFull = filledCount >= MAX_PLAYERS;
+
     const positionText = Object.keys(positions)
       .map((role) => {
         const user = players[role];
         return `${positions[role]} ${role}: ${user ? `<@${user}>` : ""}`;
       })
       .join("\n");
+
+    // 예비 참가자 순번 표시
+    const substituteText =
+      substitutes.length > 0
+        ? substitutes.map((uid, i) => `${i + 1}번 <@${uid}>`).join(", ")
+        : "";
 
     const embed = new EmbedBuilder()
       .setTitle("🎮 일반게임 모집")
@@ -295,9 +306,9 @@ async function updateEmbed(msgId, interaction, partyData) {
           `게임 정보: ${startTime || "미정"}\n\n` +
           `${positionText}\n\n` +
           `🎲 상관없음: ${any.map((u) => `<@${u}>`).join(", ") || ""}\n\n` +
-          `예비 참가: ${substitutes.map((uid) => `<@${uid}>`).join(", ") || ""}`,
+          `예비 참가: ${substituteText || ""}`,
       )
-      .setColor(0x1abc9c);
+      .setColor(isFull ? 0x95a5a6 : 0x1abc9c);
 
     const row1 = new ActionRowBuilder();
     const row2 = new ActionRowBuilder();
@@ -308,7 +319,7 @@ async function updateEmbed(msgId, interaction, partyData) {
           .setCustomId(`normal_pos_${role}`)
           .setLabel(`${role} ${emoji}`)
           .setStyle(ButtonStyle.Primary)
-          .setDisabled(!!players[role]),
+          .setDisabled(!!players[role] || isFull),
       );
     }
 
@@ -316,7 +327,8 @@ async function updateEmbed(msgId, interaction, partyData) {
       new ButtonBuilder()
         .setCustomId("normal_any")
         .setLabel("상관없음 🎲")
-        .setStyle(ButtonStyle.Secondary),
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(isFull),
       new ButtonBuilder()
         .setCustomId("normal_substitute")
         .setLabel("예비 참가")
