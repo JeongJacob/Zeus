@@ -314,49 +314,47 @@
       }
 
       /* ── PREVIEW ── */
-      .preview-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 1.5rem;
+      .preview-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4rem;
       }
-      .preview-card {
+      .preview-item {
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 4px;
         overflow: hidden;
-        transition:
-          border-color 0.3s,
-          transform 0.3s;
+        transition: border-color 0.3s;
       }
-      .preview-card:hover {
+      .preview-item:hover {
         border-color: #333;
-        transform: translateY(-4px);
       }
-      .preview-card img,
-      .preview-card video {
+      .preview-item img {
         width: 100%;
         display: block;
-        object-fit: cover;
+        object-fit: contain;
+        background: #0a0a0a;
       }
-      .preview-card-body {
-        padding: 1.2rem 1.4rem;
+      .preview-item-body {
+        padding: 1.8rem 2rem 2rem;
       }
-      .preview-card-tag {
+      .preview-item-tag {
         font-size: 0.7rem;
         letter-spacing: 0.12em;
         color: var(--gold);
-        margin-bottom: 0.4rem;
+        margin-bottom: 0.5rem;
       }
-      .preview-card-title {
+      .preview-item-title {
         font-family: "Noto Serif KR", serif;
-        font-size: 1rem;
+        font-size: 1.3rem;
         font-weight: 600;
         color: var(--accent);
-        margin-bottom: 0.3rem;
+        margin-bottom: 0.5rem;
       }
-      .preview-card-desc {
-        font-size: 0.82rem;
+      .preview-item-desc {
+        font-size: 0.9rem;
         color: var(--muted);
+        line-height: 1.7;
       }
 
       .commands-list {
@@ -630,43 +628,44 @@
         <h2 class="section-title">직접 확인해보세요</h2>
         <p class="section-desc">실제 사용 화면을 담은 시연 영상이에요.</p>
       </div>
-      <div class="preview-grid reveal">
-        <div class="preview-card">
+      <div class="preview-list">
+        <div class="preview-item reveal">
           <img src="preview-party.gif" alt="자랭 모집 시연" loading="lazy" />
-          <div class="preview-card-body">
-            <div class="preview-card-tag">자유랭크</div>
-            <div class="preview-card-title">자랭 파티 모집</div>
-            <div class="preview-card-desc">
-              포지션 선택, 게임 정보 입력, 참가 신청까지 버튼 하나로.
+          <div class="preview-item-body">
+            <div class="preview-item-tag">자유랭크</div>
+            <div class="preview-item-title">자랭 파티 모집</div>
+            <div class="preview-item-desc">
+              포지션 선택, 게임 정보 입력, 참가 신청까지 버튼 하나로 처리할 수
+              있어요.
             </div>
           </div>
         </div>
-        <div class="preview-card">
+        <div class="preview-item reveal">
           <img src="preview-scrim.gif" alt="내전 모집 시연" loading="lazy" />
-          <div class="preview-card-body">
-            <div class="preview-card-tag">내전</div>
-            <div class="preview-card-title">내전 모집</div>
-            <div class="preview-card-desc">
-              10인 내전 모집, 라인 선택 및 예비 참가자 순번 관리.
+          <div class="preview-item-body">
+            <div class="preview-item-tag">내전</div>
+            <div class="preview-item-title">내전 모집</div>
+            <div class="preview-item-desc">
+              10인 내전 모집, 라인 선택 및 예비 참가자 순번 관리까지 지원해요.
             </div>
           </div>
         </div>
-        <div class="preview-card">
+        <div class="preview-item reveal">
           <img src="preview-duo.gif" alt="듀오 모집 시연" loading="lazy" />
-          <div class="preview-card-body">
-            <div class="preview-card-tag">솔로랭크 듀오</div>
-            <div class="preview-card-title">듀오 파트너 모집</div>
-            <div class="preview-card-desc">
-              닉네임, 티어, 포지션을 입력해 듀오 파트너를 구해요.
+          <div class="preview-item-body">
+            <div class="preview-item-tag">솔로랭크 듀오</div>
+            <div class="preview-item-title">듀오 파트너 모집</div>
+            <div class="preview-item-desc">
+              닉네임, 티어, 포지션을 입력해 듀오 파트너를 구할 수 있어요.
             </div>
           </div>
         </div>
-        <div class="preview-card">
+        <div class="preview-item reveal">
           <img src="preview-log.png" alt="로그 시연" loading="lazy" />
-          <div class="preview-card-body">
-            <div class="preview-card-tag">활동 로그</div>
-            <div class="preview-card-title">모집 생성 · 삭제 로그</div>
-            <div class="preview-card-desc">
+          <div class="preview-item-body">
+            <div class="preview-item-tag">활동 로그</div>
+            <div class="preview-item-title">모집 생성 · 삭제 로그</div>
+            <div class="preview-item-desc">
               모집 생성과 삭제 내역이 지정 채널에 자동으로 기록돼요.
             </div>
           </div>
