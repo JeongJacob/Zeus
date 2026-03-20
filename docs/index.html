@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Zeus — 롤 파티 모집 디스코드 봇</title>
-    <link rel="icon" type="image/png" href="logo.png" />
+    <link rel="icon" type="image/png" href="favicon.png" />
     <link
       href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700;900&family=Noto+Sans+KR:wght@300;400;500&display=swap"
       rel="stylesheet"
@@ -312,6 +312,53 @@
         color: var(--muted);
         line-height: 1.7;
       }
+
+      /* ── PREVIEW ── */
+      .preview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1.5rem;
+      }
+      .preview-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        overflow: hidden;
+        transition:
+          border-color 0.3s,
+          transform 0.3s;
+      }
+      .preview-card:hover {
+        border-color: #333;
+        transform: translateY(-4px);
+      }
+      .preview-card img,
+      .preview-card video {
+        width: 100%;
+        display: block;
+        object-fit: cover;
+      }
+      .preview-card-body {
+        padding: 1.2rem 1.4rem;
+      }
+      .preview-card-tag {
+        font-size: 0.7rem;
+        letter-spacing: 0.12em;
+        color: var(--gold);
+        margin-bottom: 0.4rem;
+      }
+      .preview-card-title {
+        font-family: "Noto Serif KR", serif;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--accent);
+        margin-bottom: 0.3rem;
+      }
+      .preview-card-desc {
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+
       .commands-list {
         display: flex;
         flex-direction: column;
@@ -457,6 +504,7 @@
       </a>
       <ul class="nav-links">
         <li><a href="#features">기능</a></li>
+        <li><a href="#preview">시연</a></li>
         <li><a href="#commands">명령어</a></li>
         <li>
           <a href="https://discord.gg/zfKDumpxX2" target="_blank">DISCORD</a>
@@ -494,7 +542,7 @@
           class="btn-primary"
           >⚡ 서버에 초대하기</a
         >
-        <a href="#features" class="btn-secondary">기능 살펴보기 ↓</a>
+        <a href="#preview" class="btn-secondary">시연 보기 ↓</a>
       </div>
       <div class="hero-scroll">
         <div class="scroll-line"></div>
@@ -569,6 +617,59 @@
             모집 생성 및 삭제 내역을 지정한 채널에 자동으로 기록해요. /로그채널
             명령어로 간편하게 설정할 수 있어요.
           </p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- PREVIEW -->
+    <section id="preview">
+      <div class="reveal">
+        <div class="section-label">PREVIEW</div>
+        <h2 class="section-title">직접 확인해보세요</h2>
+        <p class="section-desc">실제 사용 화면을 담은 시연 영상이에요.</p>
+      </div>
+      <div class="preview-grid reveal">
+        <div class="preview-card">
+          <img src="preview-party.gif" alt="자랭 모집 시연" loading="lazy" />
+          <div class="preview-card-body">
+            <div class="preview-card-tag">자유랭크</div>
+            <div class="preview-card-title">자랭 파티 모집</div>
+            <div class="preview-card-desc">
+              포지션 선택, 게임 정보 입력, 참가 신청까지 버튼 하나로.
+            </div>
+          </div>
+        </div>
+        <div class="preview-card">
+          <img src="preview-scrim.gif" alt="내전 모집 시연" loading="lazy" />
+          <div class="preview-card-body">
+            <div class="preview-card-tag">내전</div>
+            <div class="preview-card-title">내전 모집</div>
+            <div class="preview-card-desc">
+              10인 내전 모집, 라인 선택 및 예비 참가자 순번 관리.
+            </div>
+          </div>
+        </div>
+        <div class="preview-card">
+          <img src="preview-duo.gif" alt="듀오 모집 시연" loading="lazy" />
+          <div class="preview-card-body">
+            <div class="preview-card-tag">솔로랭크 듀오</div>
+            <div class="preview-card-title">듀오 파트너 모집</div>
+            <div class="preview-card-desc">
+              닉네임, 티어, 포지션을 입력해 듀오 파트너를 구해요.
+            </div>
+          </div>
+        </div>
+        <div class="preview-card">
+          <img src="preview-log.png" alt="로그 시연" loading="lazy" />
+          <div class="preview-card-body">
+            <div class="preview-card-tag">활동 로그</div>
+            <div class="preview-card-title">모집 생성 · 삭제 로그</div>
+            <div class="preview-card-desc">
+              모집 생성과 삭제 내역이 지정 채널에 자동으로 기록돼요.
+            </div>
+          </div>
         </div>
       </div>
     </section>
