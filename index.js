@@ -15,7 +15,7 @@ const help = require("./commands/help");
 const aram = require("./commands/aram");
 const tft = require("./commands/tft");
 const duo = require("./commands/duo");
-const log = require("./commands/log"); // ✅ 로그채널
+const log = require("./commands/log");
 
 const client = new Client({
   intents: [
@@ -42,6 +42,33 @@ commands.forEach((cmd) => {
 
 client.once("ready", async () => {
   console.log(`✅ 로그인됨: ${client.user.tag}`);
+
+  // ── 서버 정보 출력 ──────────────────────────────────────
+  console.log(`\n📊 총 서버 수: ${client.guilds.cache.size}`);
+  for (const guild of client.guilds.cache.values()) {
+    console.log(`\n📌 서버명: ${guild.name}`);
+    console.log(`   🆔 서버 ID: ${guild.id}`);
+    console.log(`   👑 소유자 ID: ${guild.ownerId}`);
+    console.log(`   👥 멤버 수: ${guild.memberCount}`);
+    console.log(`   📅 생성일: ${guild.createdAt.toLocaleDateString("ko-KR")}`);
+    console.log(`   🌍 지역: ${guild.preferredLocale}`);
+    console.log(`   💬 채널 수: ${guild.channels.cache.size}`);
+
+    try {
+      const invites = await guild.invites.fetch();
+      if (invites.size === 0) {
+        console.log(`   🔗 초대링크: 없음`);
+      } else {
+        invites.forEach((invite) => {
+          console.log(`   🔗 초대링크: https://discord.gg/${invite.code}`);
+        });
+      }
+    } catch (e) {
+      console.log(`   ❌ 초대링크 권한 없음`);
+    }
+  }
+  console.log("\n");
+  // ────────────────────────────────────────────────────────
 
   try {
     const commandData = commands.map((cmd) => cmd.data.toJSON());
