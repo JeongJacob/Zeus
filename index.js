@@ -46,25 +46,33 @@ client.once("ready", async () => {
   // ── 서버 정보 출력 ──────────────────────────────────────
   console.log(`\n📊 총 서버 수: ${client.guilds.cache.size}`);
   for (const guild of client.guilds.cache.values()) {
-    console.log(`\n📌 서버명: ${guild.name}`);
-    console.log(`   🆔 서버 ID: ${guild.id}`);
-    console.log(`   👑 소유자 ID: ${guild.ownerId}`);
-    console.log(`   👥 멤버 수: ${guild.memberCount}`);
-    console.log(`   📅 생성일: ${guild.createdAt.toLocaleDateString("ko-KR")}`);
-    console.log(`   🌍 지역: ${guild.preferredLocale}`);
-    console.log(`   💬 채널 수: ${guild.channels.cache.size}`);
-
     try {
-      const invites = await guild.invites.fetch();
-      if (invites.size === 0) {
-        console.log(`   🔗 초대링크: 없음`);
-      } else {
-        invites.forEach((invite) => {
-          console.log(`   🔗 초대링크: https://discord.gg/${invite.code}`);
-        });
+      const fetchedGuild = await guild.fetch();
+
+      console.log(`\n📌 서버명: ${fetchedGuild.name}`);
+      console.log(`   🆔 서버 ID: ${fetchedGuild.id}`);
+      console.log(`   👑 소유자 ID: ${fetchedGuild.ownerId}`);
+      console.log(`   👥 멤버 수: ${fetchedGuild.memberCount}`);
+      console.log(
+        `   📅 생성일: ${fetchedGuild.createdAt.toLocaleDateString("ko-KR")}`,
+      );
+      console.log(`   🌍 지역: ${fetchedGuild.preferredLocale}`);
+      console.log(`   💬 채널 수: ${fetchedGuild.channels.cache.size}`);
+
+      try {
+        const invites = await fetchedGuild.invites.fetch();
+        if (invites.size === 0) {
+          console.log(`   🔗 초대링크: 없음`);
+        } else {
+          invites.forEach((invite) => {
+            console.log(`   🔗 초대링크: https://discord.gg/${invite.code}`);
+          });
+        }
+      } catch (e) {
+        console.log(`   ❌ 초대링크 권한 없음`);
       }
     } catch (e) {
-      console.log(`   ❌ 초대링크 권한 없음`);
+      console.log(`❌ 서버 정보 fetch 실패: ${e.message}`);
     }
   }
   console.log("\n");
