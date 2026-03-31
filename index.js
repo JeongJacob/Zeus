@@ -64,9 +64,10 @@ client.once("ready", async () => {
         if (invites.size === 0) {
           console.log(`   🔗 초대링크: 없음`);
         } else {
-          invites.forEach((invite) => {
-            console.log(`   🔗 초대링크: https://discord.gg/${invite.code}`);
-          });
+          const latest = invites
+            .sort((a, b) => b.createdTimestamp - a.createdTimestamp)
+            .first();
+          console.log(`   🔗 초대링크: https://discord.gg/${latest.code}`);
         }
       } catch (e) {
         console.log(`   ❌ 초대링크 권한 없음`);
