@@ -77,7 +77,6 @@ async function execute(interaction) {
     );
 
     const msg = await interaction.channel.send({
-      content: "@everyone",
       embeds: [embed],
       components: [row],
     });
