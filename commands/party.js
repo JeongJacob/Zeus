@@ -277,6 +277,15 @@ function removePlayer(partyData, userId) {
 
 async function updateEmbed(msgId, interaction, partyData) {
   try {
+    // ✅ 먼저 Discord에 응답 신호 보내기
+    if (!interaction.deferred && !interaction.replied) {
+      if (interaction.isModalSubmit()) {
+        await interaction.deferReply({ flags: 64 });
+      } else {
+        await interaction.deferUpdate();
+      }
+    }
+
     const msg =
       interaction.message || (await interaction.channel.messages.fetch(msgId));
     const { startTime, players, substitutes, creatorName, any } = partyData;
@@ -291,7 +300,6 @@ async function updateEmbed(msgId, interaction, partyData) {
       })
       .join("\n");
 
-    // 예비 참가자 순번 표시
     const substituteText =
       substitutes.length > 0
         ? substitutes.map((uid, i) => `${i + 1}번 <@${uid}>`).join(", ")
@@ -340,9 +348,13 @@ async function updateEmbed(msgId, interaction, partyData) {
         .setStyle(ButtonStyle.Danger),
     );
 
+    // ✅ defer 이후에 메시지 수정
     await msg.edit({ embeds: [embed], components: [row1, row2] });
-    if (!interaction.deferred && !interaction.replied)
-      await interaction.deferUpdate();
+
+    // ✅ Modal은 deferReply 후 삭제 처리
+    if (interaction.isModalSubmit()) {
+      await interaction.deleteReply().catch(() => null);
+    }
   } catch (e) {
     console.error("Embed 업데이트 실패:", e);
   }
